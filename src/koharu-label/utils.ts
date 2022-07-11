@@ -1,7 +1,7 @@
-'use strict'
+
 import { default as axios, AxiosRequestHeaders, AxiosResponse, AxiosInstance } from "axios"
 import msgpack from "@ygoe/msgpack"
-import { Ndarray, TypedArray } from "./ndarray";
+import { Ndarray, TypedArray } from "./ndarray"
 import * as z from 'zod'
 const { toString } = Object.prototype
 const plainObjects = new Set(['[object Object]', '[object Array]'])

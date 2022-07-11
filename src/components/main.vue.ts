@@ -1,5 +1,5 @@
-'use strict'
-import * as Vue from "vue";
+
+import * as Vue from "vue"
 const { defineComponent, createVNode: h, ref, shallowRef: sr } = Vue
 import * as iview from "view-ui-plus"
 const { Row, Col, Card, Icon, Input, Button, ButtonGroup, Checkbox } = iview
@@ -10,7 +10,7 @@ import { PyworldDio, PyWorld, AudioData, delay } from '../koharu-label/utils'
 import SvpFile from '../koharu-label/svp-file'
 import readme from '../assets/readme.md?raw'
 import HelloWorld from './HelloWorld.vue'
-const info = marked.parse(readme)
+const info = marked.parse(readme).replace(/\<a ([^>]*)\>/g, '<a target="_blank" $1>')
 export default defineComponent({
   name: "Koharu Label",
   props: {

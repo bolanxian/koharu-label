@@ -7,6 +7,10 @@
     "name": "僠儖僲",
     "url": "https://space.bilibili.com/517723/"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bolanxian/koharu-label/"
+  },
   "scripts": {
     "requirements": "pip install flask flask_cors msgpack soundfile pyworld",
     "dev": "vite",

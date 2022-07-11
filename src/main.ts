@@ -1,15 +1,18 @@
-'use strict'
+
 import * as Vue from "vue"
 import * as iview from "view-ui-plus"
 import axios from 'axios'
 import msgpack from '@ygoe/msgpack'
 import * as z from 'zod'
 import Main from './components/main.vue'
-import Syncer from './components/syncer.vue'
+import { Main as Syncer } from './components/syncer.vue'
 import 'view-ui-plus/dist/styles/viewuiplus.css'
 import './assets/utils.css'
 const opts = Vue.ref()
-const App=(() => {
+const App = (() => {
+  switch (location.hash) {
+    case '#syncer': return Syncer
+  }
   switch (location.search) {
     case '?syncer': return Syncer
   }
@@ -20,7 +23,7 @@ const app = Vue.createApp(App, {
   opts
 })
 app.mount('#app')
-document.title=App.name
+document.title = App.name
 export const exports = {
   Vue, iview, axios, msgpack, z,
   app, options: opts.value

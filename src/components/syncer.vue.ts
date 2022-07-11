@@ -1,16 +1,14 @@
-import * as Vue from "vue";
+
+import * as Vue from "vue"
 const { defineComponent, createVNode: h, ref, shallowRef: sr } = Vue
 import * as iview from "view-ui-plus"
 const { Row, Col, Card, Icon, Input, Button, ButtonGroup, Checkbox } = iview
 import DropFile from './drop-file.vue'
+import Await from './await.vue'
 import * as utils from '../koharu-label/utils'
 import { PyworldAll, PyWorld, AudioData, delay } from '../koharu-label/utils'
-import { Ndarray, TypedArray, TypedArrayConstructor, TypeNdarray } from "../koharu-label/ndarray";
-import * as vox from "../koharu-label/vox";
-import { reactive } from "vue";
-import { TypeOf } from "zod";
-
-
+import { Ndarray, TypedArray, TypedArrayConstructor, TypeNdarray } from "../koharu-label/ndarray"
+import * as vox from "../koharu-label/vox"
 const utils2 = {
   *xparseLab(lab: string | string[], cb = (value: any) => { }): Generator<vox.LabLine> {
     const reg = /^\s*(\S+)\s+(\S+)\s+([\S\s]*?)\s*$/
@@ -82,30 +80,30 @@ const utils2 = {
   }
 }
 const createProcesser = <T extends {
-  progress: string | null
-  output: string | Promise<string> | null
-}>(name: string, cb: (this: T, ...args: any[]) => any) => {
+  process: string | null
+  output: Promise<string | null> | string | null
+}>(name: string, cb: (this: T, ...args: any[]) => Promise<any>) => {
   return async function (this: T, ...args: any[]) {
-    if (this.progress != null) { return }
-    this.progress = name
+    if (this.process != null) { return }
+    this.process = name
     try {
-      URL.revokeObjectURL(this.output as any)
-      const blob = await (this.output = cb.apply(this, args))
-      if (blob instanceof Blob) {
-        this.output = URL.createObjectURL(blob)
-      } else {
-        this.output = null
-      }
+      URL.revokeObjectURL(await this.output as any)
+      const promise = this.output = cb.apply(this, args).then((blob: any): string | null => {
+        if (blob instanceof Blob) {
+          return URL.createObjectURL(blob)
+        }
+        return null
+      })
+      await promise
     } catch (e) {
       this.output = null
       iview.Message.error('合成失败')
       throw e
     } finally {
-      this.progress = null
+      this.process = null
     }
   }
 }
-type Main = InstanceType<typeof Main>
 export const Main = defineComponent({
   name: 'Koharu Label Syncer',
   props: {
@@ -118,13 +116,16 @@ export const Main = defineComponent({
       f0File: sr<File | null>(null),
       audio: sr<File | AudioData | null>(null),
       worldResult: sr<PyworldAll | null>(null),
-      progress: sr<string | null>(null),
-      output: sr<string | Promise<string> | null>(null),
+      process: sr<string | null>(null),
+      output: sr<Promise<string | null> | string | null>(null),
       imgs: sr<string[]>([]),
 
-      lab0: ref<string>(''),
-      lab1: ref<string>(''),
-      useSavefig: ref(false)
+      lab0: sr<string>(''),
+      lab1: sr<string>(''),
+      useSavefig: false,
+
+      promptValue: null as string | null,
+      info: sr('')
     }
     ctx.expose(opts)
     return opts
@@ -134,8 +135,8 @@ export const Main = defineComponent({
   },
   computed: {
     outputAudioName() {
-      const vm = this, { audio, output } = vm
-      if (!(audio instanceof AudioData) || output instanceof Promise) { return null }
+      const { audio } = this
+      if (!(audio instanceof AudioData)) { return null }
       return audio.name.replace(utils.EXT_REG, '_voxsyn.wav')
     }
   },
@@ -197,17 +198,20 @@ export const Main = defineComponent({
       const file = await world.encodeAudio(data, fs, info.format, info.subtype)
       utils.download([file], name)
     },
+    log(msg: string | null) {
+      if (msg == null) { this.info = ''; return }
+      this.info = msg
+      iview.Message.info(msg)
+    },
     handleSynthesize() { },
     handleSynthesizeTest() { },
     handleSynthesizeVox() { }
   },
-  mounted() {
-  },
   render() {
-    const vm = this, { audio, output } = vm
-    const audioData = audio instanceof AudioData ? audio : null
-    const isSynthesizing = output instanceof Promise
-    const realOutput = isSynthesizing ? '' : output
+    const vm = this
+    const synthesizeButton = () => h(Button, {
+      disabled: vm.f0File == null, onClick: vm.handleSynthesize
+    }, () => '合成')
     return h(Row, { gutter: 5 }, () => [
       h(Col, { xs: 24, lg: 12 }, () => [
         h(DropFile, { global: !true, onChange: vm.handleChange }),
@@ -221,10 +225,10 @@ export const Main = defineComponent({
           }, () => h(Icon, { type: "md-close" }))
         }),
         h(Card, {
-          icon: audioData ? 'md-document' : '',
-          title: audio ? audioData ? audio.name : '加载中' : '需要 wav 文件'
+          icon: vm.audio instanceof AudioData ? 'md-document' : '',
+          title: vm.audio ? vm.audio instanceof AudioData ? vm.audio.name : '加载中' : '需要 wav 文件'
         }, {
-          default: () => audio instanceof AudioData ? audio.getInfo() : '',
+          default: () => vm.audio instanceof AudioData ? vm.audio.getInfo() : '',
           extra: () => h(ButtonGroup, {}, () => [
             h(Button, {
               disabled: !vm.audio,
@@ -236,29 +240,21 @@ export const Main = defineComponent({
             }, () => h(Icon, { type: "md-close" }))
           ])
         }),
-        h(Card, {
-          icon: output ? 'md-document' : '',
-          title: output ? isSynthesizing ? '合成中' : '已合成' : '合成'
-        }, {
-          extra: () => h(ButtonGroup, {}, () => [
-            h(Button, {
-              disabled: isSynthesizing || !(vm.f0File),
-              onClick: vm.handleSynthesize,
-            }, () => '合成')
-            /*, h(Button, {
-              disabled: isSynthesizing || !output,
-              onClick: vm.handlePlay,
-            }, () => h(Icon, { attrs: { type: "md-play" } }))*/
-          ]),
-          default: () => [
-            realOutput ? h('audio', {
-              controls: '', src: realOutput,
-              style: { width: '100%' }
-            }) : null,
-            realOutput ? h('a', {
-              href: realOutput, download: vm.outputAudioName
-            }, vm.outputAudioName) : null
-          ]
+        h(Await, { promise: vm.output }, {
+          pending: () => h(Card, { title: '合成中' }, {
+            extra: () => h(Button, { disabled: true }, () => '合成'),
+            default: () => h('div', {}, vm.info)
+          }),
+          catch: () => h(Card, { title: '合成失败' }, { extra: synthesizeButton }),
+          empty: () => h(Card, { title: '合成' }, { extra: synthesizeButton }),
+          default: (output: any, old: any) => h(Card, {}, {
+            title: (name: any) => (name = vm.outputAudioName, h('p', {}, [
+              h(Icon, { type: "md-document" }),
+              h('a', { href: output, download: name }, name)
+            ])),
+            extra: synthesizeButton,
+            default: () => h('audio', { controls: '', src: output, style: { width: '100%' } })
+          })
         }),
         Array.from(vm.imgs, src => h('img', { src }))
       ]),
@@ -282,6 +278,7 @@ export const Main = defineComponent({
   }
 })
 export default Main
+type Main = InstanceType<typeof Main>
 Object.assign(Main.methods as any, {
   handleSynthesize: createProcesser<Main>('', async function () {
     const vm = this
@@ -291,9 +288,9 @@ Object.assign(Main.methods as any, {
     }
     const { fs, info } = audio, { sp, ap } = worldResult
     if (info == null || f0File == null) { return }
+    vm.log('开始 WORLD 合成')
     const f0 = new Float64Array(await f0File.arrayBuffer())
     let result = await world.synthesize(...utils2.labelSync(lab0, lab1, f0, sp, ap, fs))
-    //const adata=new AudioData(data,fs)
     return await world.encodeAudio(result, fs, info.format, info.subtype)
   }),
   handleSynthesizeTest: createProcesser<Main>('', async function () {
@@ -303,22 +300,25 @@ Object.assign(Main.methods as any, {
     const { fs, info } = audio, { f0, sp, ap } = worldResult
     if (info == null) { return }
     const result = await world.synthesize(f0, sp, ap, fs)
-    //const adata=new AudioData(data,fs)
     return await world.encodeAudio(result, fs, info.format, info.subtype)
   }),
   handleSynthesizeVox: createProcesser<Main>('', async function () {
-    const vm = this
+    const vm = this, { world, lab0, f0File } = vm
+    let { promptValue } = vm, msg: string | null
+    if (f0File == null) { return }
+    vm.log(null)
     try {
-      var speakers = await vox.getSpeakers()
+      let speakers = await vox.getSpeakers()
+      msg = 'Input speaker id,min vowel length,max vowel length,pitch:\n' + speakers
     } catch (e) {
       iview.Message.error('连接 VOICEVOX ENGINE 失败')
       return
     }
-    let msg: string | null = 'Input speaker id,min vowel length,max vowel length,pitch:\n' + speakers
-    msg = prompt(msg, '8,0.05,0.15,5.8')
-    if (msg == null) { return }
-    let { world, lab0, f0File } = vm, [id, minVowelLength, maxVowelLength, pitch] = msg.split(',')
-    if (f0File == null) { return }
+    if (promptValue == null) { promptValue = '8,0.05,0.15,5.8' }
+    promptValue = prompt(msg, promptValue)
+    if (promptValue == null) { return }
+    vm.promptValue = promptValue
+    const [id, minVowelLength, maxVowelLength, pitch] = promptValue.split(',')
     //lab0=vox.margeLab(lab0)
     const querys = vox.labToQuerys(lab0, {
       minVowelLength: +minVowelLength, maxVowelLength: +maxVowelLength, pitch: +pitch
@@ -327,7 +327,7 @@ Object.assign(Main.methods as any, {
     let Ctor: TypedArrayConstructor = Float64Array, lastInfo = { format: '', subtype: '' }, lastFs = 24000
     for (i = 0; i < querys.length; i++) {
       const query = querys[i]
-      iview.Message.info(`开始 VOICEVOX 合成 (${i + 1}/${querys.length})`)
+      vm.log(`开始 VOICEVOX 合成 (${i + 1}/${querys.length})`)
       const file = await vox.synthesis(id, query)
       const { fs, info, data } = await world.decodeAudio(file)
       lab1 += vox.generateLab(query, offset).replace(/([^\n]+\n)$/, '#$1')
@@ -337,9 +337,9 @@ Object.assign(Main.methods as any, {
       lastInfo = info
       lastFs = fs
     }
-    iview.Message.info('开始 WORLD 分析')
+    vm.log('开始 WORLD 分析')
     const audio = new AudioData(new Ctor(await new Blob(datas).arrayBuffer()), lastFs)
-    audio.name = f0File.name.replace(/\.f0$/, `(${msg}).wav`)
+    audio.name = f0File.name.replace(/\.f0$/, `(${promptValue}).wav`)
     audio.info = lastInfo
     const result = await world.all(audio.data, audio.fs)
 
@@ -347,8 +347,6 @@ Object.assign(Main.methods as any, {
     vm.lab1 = lab1.replace(/#([^\n]+\n)$/, '$1')
     vm.audio = audio
     vm.worldResult = result
-
-    iview.Message.info('开始 WORLD 合成')
     setTimeout(vm.handleSynthesize)
   })
 })
