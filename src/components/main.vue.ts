@@ -10,7 +10,7 @@ import { PyworldDio, PyWorld, AudioData, delay } from '../koharu-label/utils'
 import SvpFile from '../koharu-label/svp-file'
 import readme from '../assets/readme.md?raw'
 import HelloWorld from './HelloWorld.vue'
-const info = marked.parse(readme)
+const info = marked.parse(readme).replace(/\<a ([^>]*)\>/g, '<a target="_blank" $1>')
 export default defineComponent({
   name: "Koharu Label",
   props: {

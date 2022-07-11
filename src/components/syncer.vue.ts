@@ -7,9 +7,6 @@ import * as utils from '../koharu-label/utils'
 import { PyworldAll, PyWorld, AudioData, delay } from '../koharu-label/utils'
 import { Ndarray, TypedArray, TypedArrayConstructor, TypeNdarray } from "../koharu-label/ndarray";
 import * as vox from "../koharu-label/vox";
-import { reactive } from "vue";
-import { TypeOf } from "zod";
-
 
 const utils2 = {
   *xparseLab(lab: string | string[], cb = (value: any) => { }): Generator<vox.LabLine> {
@@ -105,7 +102,6 @@ const createProcesser = <T extends {
     }
   }
 }
-type Main = InstanceType<typeof Main>
 export const Main = defineComponent({
   name: 'Koharu Label Syncer',
   props: {
@@ -282,6 +278,7 @@ export const Main = defineComponent({
   }
 })
 export default Main
+type Main = InstanceType<typeof Main>
 Object.assign(Main.methods as any, {
   handleSynthesize: createProcesser<Main>('', async function () {
     const vm = this

@@ -13,4 +13,4 @@ PyWORLD是WORLD声码器的Python包装
 WORLD声码器提供了 `DIO` 和 `Harvest` 两个基频估计方法  
 在本页面控制台执行 `options.useHarvest=true` 可切换为 `Harvest`  
 
-### [唱歌VOICEVOX](/?syncer)
+### [唱歌VOICEVOX](#syncer)
