@@ -2,7 +2,7 @@
 import sys,os
 sys.path.insert(0,os.path.join(os.path.dirname(__file__),'site-packages'))
 
-from flask import Flask,request,redirect,jsonify
+from flask import Flask,request,jsonify
 app=Flask(__name__,static_folder='./dist',static_url_path='/')
 max_content_length=128*1024*1024
 app.config['MAX_CONTENT_LENGTH']=max_content_length
