@@ -1,5 +1,5 @@
-'use strict'
-import * as Vue from "vue";
+
+import * as Vue from "vue"
 const { defineComponent, createVNode: h, ref, shallowRef: sr } = Vue
 import * as iview from "view-ui-plus"
 const { Row, Col, Card, Icon, Input, Button, ButtonGroup, Checkbox } = iview

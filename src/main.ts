@@ -1,4 +1,4 @@
-'use strict'
+
 import * as Vue from "vue"
 import * as iview from "view-ui-plus"
 import axios from 'axios'

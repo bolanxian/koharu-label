@@ -1,4 +1,4 @@
-'use strict'
+
 import * as z from 'zod'
 const types={
   int8 :Int8Array ,uint8 :Uint8Array ,int16:Int16Array   ,uint16:Uint16Array,

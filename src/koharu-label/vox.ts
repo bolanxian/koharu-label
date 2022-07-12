@@ -1,9 +1,9 @@
 
-import { default as axios, AxiosRequestHeaders, AxiosResponse, AxiosInstance } from "axios"
+import { default as axios } from "axios"
 const vowels = 'pau,sil,cl,a,i,u,e,o,N'.split(',')
 const consonants = 'k,ky,g,gy,s,sh,z,t,ts,ty,ch,d,dy,n,ny,h,hy,b,by,f,p,py,m,my,y,r,ry,v,w,j'.split(',')
-export type LabLine=[number, number, string]
-export type Lab=LabLine[]
+export type LabLine = [number, number, string]
+export type Lab = LabLine[]
 function* xparseLab(lab: string | string[]): Generator<LabLine> {
   const reg = /^\s*(\d+)\s+(\d+)\s+([\S\s]*?)\s*$/
   for (const line of typeof lab === 'string' ? lab.split(/\r?\n/) : lab) {
@@ -106,7 +106,7 @@ const synthesis = async (id: number | string, _query: any) => {
   return data
 }
 //from https://github.com/VOICEVOX/voicevox/blob/main/src/store/audio.ts
-const generateLab = (query: any, offset = 0) :string=> {
+const generateLab = (query: any, offset = 0): string => {
   //const query = state.audioItems[audioKey].query
   if (query == null) return ''
   const speedScale = query.speedScale

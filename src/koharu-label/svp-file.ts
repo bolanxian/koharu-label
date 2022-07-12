@@ -1,4 +1,4 @@
-'use strict'
+
 const attributes = {
   "tF0Offset": 0, "tF0Left": 0, "tF0Right": 0, "dF0Left": 0, "dF0Right": 0, "dF0Vbr": 0
 }

@@ -1,5 +1,5 @@
-'use strict'
-import * as Vue from "vue";
+
+import * as Vue from "vue"
 const { defineComponent, createVNode: h, shallowRef: sr } = Vue
 const { isArray } = Array
 export default defineComponent({
