@@ -14,7 +14,9 @@ function* xparseLab(lab: string | string[]): Generator<LabLine> {
   }
 }
 function* data_flag(x: [number, number, string][]): Generator<number> {
-  for (var i = 0, j = 0, len = x.length - 1; i < len; i++) {
+  const len = x.length - 1
+  let i = 0, j = 0
+  for (; i < len; i++) {
     yield j
     if (x[i][2] != x[i + 1][2]) { j += 1 }
   }
@@ -24,7 +26,8 @@ const margeLab = (_lab: string | string[]): Lab => {
   const lab = Array.from(xparseLab(_lab))
   const flags = Array.from(data_flag(lab))
   const newLab: [number, number, string][] = []
-  for (var i = 0; i < flags.length; i++) {
+  let i = 0
+  for (; i < flags.length; i++) {
     const flag = flags[i]
     if (newLab[flag]) {
       newLab[flag][1] = lab[i][1]

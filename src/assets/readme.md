@@ -4,6 +4,7 @@
 ### 从 NEUTRINO
 `NEUTRINO/score/label/timing/*.lab`  
 `NEUTRINO/output/*.f0`  
+
 ### 从 VOICEVOX
 首先在 设置＞保存 打开 `labファイルを書き出し`  
 
