@@ -12,16 +12,16 @@ import * as vox from "../koharu-label/vox"
 const utils2 = {
   *xparseLab(lab: string | string[], cb = (value: any) => { }): Generator<vox.LabLine> {
     const reg = /^\s*(\S+)\s+(\S+)\s+([\S\s]*?)\s*$/
-    for (var line of typeof lab === 'string' ? lab.split(/\r?\n/) : lab) {
+    for (let line of typeof lab === 'string' ? lab.split(/\r?\n/) : lab) {
       line = line.trim()
       if (!line) { continue }
       if (line[0] === '#') {
         cb(line[0].slice(1))
         continue
       }
-      var m = line.match(reg)
+      const m = line.match(reg)
       if (m) {
-        var [_, a, b, c] = m
+        const [_, a, b, c] = m
         yield [+a / 10000, +b / 10000, c]
       }
     }
@@ -143,7 +143,7 @@ export const Main = defineComponent({
   methods: {
     async handleChange(files: File[]) {
       const { audioTypes } = AudioData
-      var lab, f0, audio
+      let lab, f0, audio
       for (const file of files) {
         const type = utils.getFileExt(file)
         if (type === 'lab') { lab = file }
@@ -153,9 +153,9 @@ export const Main = defineComponent({
         }
         else if (audioTypes.has(type)) { audio = file }
       }
-      if (lab) { this[audio != null ? 'lab1' : 'lab0'] = `#filename=${lab.name}\n${await lab.text()}` }
-      if (f0) { this.f0File = f0 }
-      if (audio) { await this.loadAudioFile(audio) }
+      if (lab != null) { this[audio != null ? 'lab1' : 'lab0'] = `#filename=${lab.name}\n${await lab.text()}` }
+      if (f0 != null) { this.f0File = f0 }
+      if (audio != null) { await this.loadAudioFile(audio) }
     },
     closeF0File() { this.f0File = null },
     async loadAudioFile(file: File) {
@@ -304,12 +304,12 @@ Object.assign(Main.methods as any, {
   }),
   handleSynthesizeVox: createProcesser<Main>('', async function () {
     const vm = this, { world, lab0, f0File } = vm
-    let { promptValue } = vm, msg: string | null
+    let { promptValue } = vm
     if (f0File == null) { return }
     vm.log(null)
     try {
       let speakers = await vox.getSpeakers()
-      msg = 'Input speaker id,min vowel length,max vowel length,pitch:\n' + speakers
+      var msg = 'Input speaker id,min vowel length,max vowel length,pitch:\n' + speakers
     } catch (e) {
       iview.Message.error('连接 VOICEVOX ENGINE 失败')
       return

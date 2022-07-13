@@ -42,7 +42,7 @@ export class PyWorld {
       transformRequest: [(data, headers?: AxiosRequestHeaders) => {
         if (headers && isPlainObject(data)) {
           headers["Content-Type"] = "application/x-msgpack"
-          data = msgpack.encode(data)
+          data = new Blob([msgpack.encode(data)])
         }
         return data
       }],
@@ -185,16 +185,17 @@ export class AudioData {
     const bytesPer = this.data.BYTES_PER_ELEMENT, result = abuf.getChannelData(0)
     if (data instanceof Float32Array || data instanceof Float64Array) {
       result.set(data)
-    } else if (data instanceof Int16Array) {
-      for (var i = 0; i < data.length; i++) {
-        result[i] = data[i] / 0x8000
-      }
-    } else if (data instanceof Uint8Array) {
-      for (var i = 0; i < data.length; i++) {
-        result[i] = (data[i] - 0x80) / 0x100
-      }
     } else {
-
+      let i
+      if (data instanceof Int16Array) {
+        for (i = 0; i < data.length; i++) {
+          result[i] = data[i] / 0x8000
+        }
+      } else if (data instanceof Uint8Array) {
+        for (i = 0; i < data.length; i++) {
+          result[i] = (data[i] - 0x80) / 0x100
+        }
+      }
     }
     return abuf
   }
@@ -229,9 +230,9 @@ export const download = (sequence: string | BlobPart[] | Blob, filename = ''): v
   a.click()
 }
 export function* xgetZeroRanges(buf: TypedArray): Generator<[number, number]> {
-  var begin = null
-  for (var i = 0; i < buf.length; i++) {
-    var isZero = buf[i] === 0
+  let i, begin = null
+  for (i = 0; i < buf.length; i++) {
+    const isZero = buf[i] === 0
     if (begin === null) {
       if (isZero) { begin = i }
     } else {

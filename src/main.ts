@@ -8,7 +8,6 @@ import Main from './components/main.vue'
 import { Main as Syncer } from './components/syncer.vue'
 import 'view-ui-plus/dist/styles/viewuiplus.css'
 import './assets/utils.css'
-const opts = Vue.ref()
 const App = (() => {
   switch (location.hash) {
     case '#syncer': return Syncer
@@ -18,12 +17,11 @@ const App = (() => {
   }
   return Main
 })()
-const app = Vue.createApp(App, {
-  baseURL: import.meta.env.DEV ? 'http://127.0.0.1:6701/' : '/',
-  opts
-})
-app.mount('#app')
 document.title = App.name
+const baseURL = location.hostname.match(/(?<=\.)git[\w-]+(?=\.io$)/i) && import.meta.env.DEV ? 'http://127.0.0.1:6701/' : '/'
+const opts = Vue.ref()
+const app = Vue.createApp(App, { baseURL, opts })
+app.mount('#app')
 export const exports = {
   Vue, iview, axios, msgpack, z,
   app, options: opts.value

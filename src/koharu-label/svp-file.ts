@@ -85,7 +85,8 @@ export default class SvpFile {
   }
   findPitchRange(begin: number, end: number, beginIndex: number = 0): [number, number] {
     const pitch = this.pitchDelta
-    for (var i = beginIndex; i < pitch.length; i += 2) {
+    let i = beginIndex
+    for (; i < pitch.length; i += 2) {
       if (pitch[i] >= begin) { beginIndex = i; break }
     }
     for (; i < pitch.length; i += 2) {
@@ -130,16 +131,17 @@ export default class SvpFile {
   }
   refinePitch() {
     const { notes } = this, pitch = this.pitchDelta
-    for (var i = 0; i < notes.length; i++) {
+    let i, j, beginIndex, endIndex
+    for (i = 0; i < notes.length; i++) {
       const note = notes[i]
-      var [beginIndex, endIndex] = this.findPitchRange(
-        note.onset, note.onset + note.duration, beginIndex
-      )
+        ;[beginIndex, endIndex] = this.findPitchRange(
+          note.onset, note.onset + note.duration, beginIndex
+        )
       if (beginIndex >= endIndex) { continue }
-      var maxPitch = this.calcMaxPitch(beginIndex, endIndex)
+      let maxPitch = this.calcMaxPitch(beginIndex, endIndex)
       note.pitch += maxPitch
       maxPitch *= 100
-      for (var j = beginIndex + 1; j < endIndex; j += 2) {
+      for (j = beginIndex + 1; j < endIndex; j += 2) {
         pitch[j] -= maxPitch
       }
     }
