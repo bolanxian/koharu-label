@@ -2,11 +2,11 @@
 import * as Vue from "vue"
 const { defineComponent, createVNode: h, ref, shallowRef: sr } = Vue
 import * as iview from "view-ui-plus"
-const { Row, Col, Card, Icon, Input, Button, ButtonGroup, Checkbox } = iview
+const { Row, Col, Card, Icon, Input, Button, ButtonGroup } = iview
 import DropFile from './drop-file.vue'
-import Await from './await.vue'
+import Awaiter from './awaiter.vue'
 import * as utils from '../koharu-label/utils'
-import { PyworldAll, PyWorld, AudioData, delay } from '../koharu-label/utils'
+import { PyworldAll, PyWorld, AudioData } from '../koharu-label/utils'
 import { Ndarray, TypedArray, TypedArrayConstructor, TypeNdarray } from "../koharu-label/ndarray"
 import * as vox from "../koharu-label/vox"
 const utils2 = {
@@ -48,18 +48,6 @@ const utils2 = {
     }
     return [f0, _sp, _ap, fs]
   },
-  typeSync(audio: AudioData, data: ArrayLike<number>) {
-    const Ctor = audio.data.constructor as TypedArrayConstructor
-    if (data.constructor !== Ctor) {
-      const { max, min, trunc } = Math
-      if (Ctor === Uint8Array) {
-        data = Ctor.from(data, value => max(0, min(0xFF, trunc(value))))
-      } else if (Ctor === Int16Array) {
-        data = Ctor.from(data, value => max(-0x8000, min(0x7FFF, trunc(value))))
-      }
-    }
-    return data
-  },
   async standardizationVvproj(json: any) {
     if (typeof json === 'string' || json instanceof Blob) {
       json = await new Response(json).json()
@@ -87,12 +75,9 @@ const createProcesser = <T extends {
     if (this.process != null) { return }
     this.process = name
     try {
-      URL.revokeObjectURL(await this.output as any)
-      const promise = this.output = cb.apply(this, args).then((blob: any): string | null => {
-        if (blob instanceof Blob) {
-          return URL.createObjectURL(blob)
-        }
-        return null
+      const promise = this.output = cb.apply(this, args).then((data: any): string | null => {
+        if (data instanceof Blob) { return URL.createObjectURL(data) }
+        return data
       })
       await promise
     } catch (e) {
@@ -240,14 +225,19 @@ export const Main = defineComponent({
             }, () => h(Icon, { type: "md-close" }))
           ])
         }),
-        h(Await, { promise: vm.output }, {
+        h(Awaiter, {
+          promise: vm.output,
+          'onUpdate:value'(value: any, oldValue: any) {
+            if (typeof oldValue === 'string') { URL.revokeObjectURL(oldValue) }
+          }
+        }, {
           pending: () => h(Card, { title: '合成中' }, {
             extra: () => h(Button, { disabled: true }, () => '合成'),
             default: () => h('div', {}, vm.info)
           }),
-          catch: () => h(Card, { title: '合成失败' }, { extra: synthesizeButton }),
           empty: () => h(Card, { title: '合成' }, { extra: synthesizeButton }),
-          default: (output: any, old: any) => h(Card, {}, {
+          rejected: () => h(Card, { title: '合成失败' }, { extra: synthesizeButton }),
+          fulfilled: (output: any, old: any) => h(Card, {}, {
             title: (name: any) => (name = vm.outputAudioName, h('p', {}, [
               h(Icon, { type: "md-document" }),
               h('a', { href: output, download: name }, name)

@@ -6,7 +6,7 @@ const { Row, Col, Card, Icon, Input, Button, ButtonGroup, Checkbox } = iview
 import { marked } from 'marked'
 import DropFile from './drop-file.vue'
 import * as utils from '../koharu-label/utils'
-import { PyworldDio, PyWorld, AudioData, delay } from '../koharu-label/utils'
+import { PyworldDio, PyWorld, AudioData } from '../koharu-label/utils'
 import SvpFile from '../koharu-label/svp-file'
 import readme from '../assets/readme.md?raw'
 import HelloWorld from './HelloWorld.vue'
@@ -102,14 +102,8 @@ export default defineComponent({
     async loadAudioFile(file: File) {
       try {
         this.audio = file
-        let audio: AudioData
-        try {
-          audio = await this.world.decodeAudio(file)
-          audio.name = file.name
-        } catch (e) {
-          console.warn('读取音频失败:', file.name, e)
-          audio = await AudioData.fromFile(file)
-        }
+        const audio = await this.world.decodeAudio(file)
+        audio.name = file.name
         const result = await this.world[this.useHarvest ? 'harvest' : 'dio'](audio.data, audio.fs)
         this.audio = audio
         this.worldResult = result
@@ -135,12 +129,12 @@ export default defineComponent({
       if (audioName == null || worldResult == null) { return }
       let _len = prompt('填充长度（字节）')
       if (typeof _len !== 'string') { return }
-      _len = _len.trim()
+      _len = _len.replace(/[\s,]/g, '')
       if (!_len) {
         this.saveFile([worldResult.f0], audioName + '.f0')
         return
       }
-      let len = parseInt(_len.replace(/,/g, ''))
+      let len = parseInt(_len)
       if (len !== len) { return }
       let { f0 } = worldResult
       f0 = (f0.constructor as Float64ArrayConstructor).from(f0)
@@ -210,13 +204,7 @@ export default defineComponent({
         utils.download(sequence, name)
         return
       }
-      const fileHandle = await handle.getFileHandle(name, { create: true })
-      const writable = await fileHandle.createWritable()
-      try {
-        await writable.write(new Blob(sequence))
-      } finally {
-        await writable.close()
-      }
+      await utils.saveFile(handle, sequence, name)
       iview.Message.success('导出成功')
     }
   },

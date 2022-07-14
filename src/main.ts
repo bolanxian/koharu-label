@@ -18,7 +18,7 @@ const App = (() => {
   return Main
 })()
 document.title = App.name
-const baseURL = location.hostname.match(/(?<=\.)git[\w-]+(?=\.io$)/i) && import.meta.env.DEV ? 'http://127.0.0.1:6701/' : '/'
+const baseURL = location.hostname.match(/(?<=\.)git[\w-]+(?=\.io$)/i) || import.meta.env.DEV ? 'http://127.0.0.1:6701/' : '/'
 const opts = Vue.ref()
 const app = Vue.createApp(App, { baseURL, opts })
 app.mount('#app')

@@ -217,18 +217,6 @@ export const assertByteorder = (expect: any): string | void => {
     return `字节序为 ${byteorder} ，预期应为 ${expect}`
   }
 }
-export const download = (sequence: string | BlobPart[] | Blob, filename = ''): void => {
-  const a = document.createElement('a')
-  a.download = filename
-  if (typeof sequence === 'string') {
-    a.href = sequence
-  } else {
-    const blob = (sequence instanceof Blob) ? sequence : new Blob(sequence)
-    const src = a.href = URL.createObjectURL(blob)
-    setTimeout(() => { URL.revokeObjectURL(src) }, 60000)
-  }
-  a.click()
-}
 export function* xgetZeroRanges(buf: TypedArray): Generator<[number, number]> {
   let i, begin = null
   for (i = 0; i < buf.length; i++) {
@@ -249,10 +237,32 @@ export const getFileExt = (file: File): string | null => {
   const m = file.name.match(EXT_REG)
   return m && m[1]
 }
+export const download = (sequence: string | BlobPart[] | Blob, filename = ''): void => {
+  const a = document.createElement('a')
+  a.download = filename
+  if (typeof sequence === 'string') {
+    a.href = sequence
+  } else {
+    const blob = (sequence instanceof Blob) ? sequence : new Blob(sequence)
+    const src = a.href = URL.createObjectURL(blob)
+    setTimeout(() => { URL.revokeObjectURL(src) }, 60000)
+  }
+  a.click()
+}
 export const fileSystemHandleVerifyPermission = async (handle: any | FileSystemDirectoryHandle, withWrite = false): Promise<boolean> => {
   const opts: any = {}, ok = 'granted'
   if (withWrite) { opts.mode = 'readwrite' }
   if (ok === await handle.queryPermission(opts)) { return true }
   if (ok === await handle.requestPermission(opts)) { return true }
   return false
+}
+export const saveFile = async (handle: FileSystemDirectoryHandle, sequence: BlobPart[] | Blob, name: string) => {
+  const fileHandle = await handle.getFileHandle(name, { create: true })
+  const writable = await fileHandle.createWritable()
+  try {
+    const blob = (sequence instanceof Blob) ? sequence : new Blob(sequence)
+    await writable.write(blob)
+  } finally {
+    await writable.close()
+  }
 }
