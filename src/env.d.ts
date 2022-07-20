@@ -6,17 +6,19 @@ declare module '*.vue' {
   const component: DefineComponent<{}, {}, any>
   export default component
 }
+declare module 'ipinyinjs/dict/pinyin_dict_withtone' { }
+declare module 'ipinyinjs/pinyinUtil' { }
 interface Window {
   showDirectoryPicker(opts?: any): Promise<FileSystemDirectoryHandle>
 }
-interface Console{
-  exception(...args:any[]):void
+interface Console {
+  exception(...args: any[]): void
 }
 interface FileSystemFileHandle {
   createWritable(): Promise<FileSystemWritableFileStream>
 }
 interface FileSystemWritableFileStream extends WritableStream {
-  seek():Promise<void>
-  truncate():Promise<void>
-  write(data:BlobPart):Promise<void>
+  seek(): Promise<void>
+  truncate(): Promise<void>
+  write(data: BlobPart): Promise<void>
 }

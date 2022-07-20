@@ -1,13 +1,16 @@
 
-import { defineComponent } from "vue"
+import * as Vue from "vue"
+const { defineComponent, shallowRef: sr } = Vue
 type State = 'empty' | 'pending' | 'fulfilled' | 'rejected'
-export default defineComponent({
+export type AwaiterState = State
+export const Awaiter = defineComponent({
+  name: 'Awaiter',
   props: { promise: null },
   emits: { 'update:value': null },
-  data() {
+  setup() {
     return {
-      state: 'empty' as State,
-      value: void 0 as any
+      state: sr<State>('empty'),
+      value: sr()
     }
   },
   watch: {
@@ -22,7 +25,7 @@ export default defineComponent({
         this.value = void 0
         Promise.resolve(promise).then((val) => {
           if (this.promise !== promise) { return }
-          this.state = val == null ? 'empty' : 'fulfilled'
+          this.state = 'fulfilled'
           this.value = val
         }, (e) => {
           if (this.promise !== promise) { return }
@@ -37,7 +40,10 @@ export default defineComponent({
   },
   render() {
     const { value, state } = this
-    const fn = this.$slots[state]
-    return fn != null ? fn(value) : null
+    let fn = this.$slots[state]
+    if (fn != null) { return fn(value) }
+    fn = this.$slots.default
+    return fn != null ? fn(state, value) : null
   }
 })
+export default Awaiter
