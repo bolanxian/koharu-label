@@ -1,7 +1,29 @@
 
 import * as Vue from "vue"
-const { defineComponent, createVNode: h, shallowRef: sr } = Vue
+const { defineComponent, createVNode: h, shallowRef: sr, createCommentVNode } = Vue
 const { isArray } = Array
+export const DropGlobal = defineComponent({
+  emits: {
+    dragover: null,
+    drop: null
+  },
+  methods: {
+    handle(e: DragEvent) {
+      this.$emit(e.type as any, e)
+    }
+  },
+  beforeMount() {
+    document.addEventListener('dragover', this.handle)
+    document.addEventListener('drop', this.handle)
+  },
+  beforeUnmount() {
+    document.removeEventListener('dragover', this.handle)
+    document.removeEventListener('drop', this.handle)
+  },
+  render() {
+    return createCommentVNode('global')
+  }
+})
 export default defineComponent({
   name: 'DropFile',
   emits: { change(files: Array<File>) { return isArray(files) } },
@@ -11,6 +33,13 @@ export default defineComponent({
     reason: { type: String, default: '' },
     multiple: { type: Boolean, default: true },
     paste: { type: Boolean, default: false }
+  },
+  setup(props, ctx) {
+    const textarea = sr<HTMLTextAreaElement | null>(null)
+    const file = sr<HTMLInputElement | null>(null)
+    return {
+      textarea, file
+    }
   },
   methods: {
     handleClick(e: Event) {
@@ -29,28 +58,19 @@ export default defineComponent({
     handleDragover(e: DragEvent | ClipboardEvent) {
       e.preventDefault(); e.stopPropagation()
     },
-    handleDrop(e: DragEvent & ClipboardEvent) {
+    handleDrop(e: DragEvent | ClipboardEvent) {
       const target = e.target as HTMLElement
       if (this.global && !this.$el.contains(target) && e.type !== 'paste') {
-        const n = target.tagName.toUpperCase(),
-          i = target.getAttribute('contenteditable')
-        if ('INPUT' === n || 'TEXTAREA' === n || '' === i || 'true' === i) return
+        const tag = target.tagName.toUpperCase()
+        const able = target.getAttribute('contenteditable')
+        if ('INPUT' === tag || 'TEXTAREA' === tag || '' === able || 'true' === able) return
       }
       e.preventDefault(); e.stopPropagation()
-      this.drop(e.dataTransfer ?? e.clipboardData)
-    },
-    drop(dT: DataTransfer | null) {
-      if (!dT) return
+      const dT = 'dataTransfer' in e ? e.dataTransfer : e.clipboardData
+      if (dT == null) return
       const { files } = dT
       if (files.length === 0) return
       this.$emit('change', Array.from(files))
-    },
-  },
-  setup(props, ctx) {
-    const textarea = sr<HTMLTextAreaElement | null>(null)
-    const file = sr<HTMLInputElement | null>(null)
-    return {
-      textarea, file
     }
   },
   render() {
@@ -61,6 +81,10 @@ export default defineComponent({
       onDrop: vm.handleDrop,
       onClick: vm.handleClick
     }, [
+      vm.global ? h(DropGlobal, {
+        onDragover: vm.handleDragover,
+        onDrop: vm.handleDrop
+      }) : null,
       h('input', {
         ref: 'file',
         type: "file", accept: vm.accept, multiple: vm.multiple,
@@ -78,7 +102,7 @@ export default defineComponent({
         onCopy: vm.handleDragover,
         onPaste: vm.handleDrop
       }),
-      slot ? slot() : [
+      slot != null ? slot() : [
         h('div', {
           class: "ivu-card-head",
           style: { 'text-align': 'left' }

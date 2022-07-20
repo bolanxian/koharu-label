@@ -1,21 +1,32 @@
-
+/**
+ * @createDate 2021-12-9 14:59:59
+*/
 import * as Vue from "vue"
 const { defineComponent, createVNode: h, ref, shallowRef: sr } = Vue
 import * as iview from "view-ui-plus"
 const { Row, Col, Card, Icon, Input, Button, ButtonGroup, Checkbox } = iview
 import { marked } from 'marked'
-import DropFile from './drop-file.vue'
-import * as utils from '../koharu-label/utils'
-import { PyworldDio, PyWorld, AudioData } from '../koharu-label/utils'
-import SvpFile from '../koharu-label/svp-file'
+import DropFile from '../components/drop-file.vue'
+import HelloWorld from '../components/hello-world.vue'
+import * as utils from './utils'
+import { PyworldDio, PyWorld, AudioData } from './utils'
+import SvpFile from './svp-file'
 import readme from '../assets/readme.md?raw'
-import HelloWorld from './HelloWorld.vue'
 const info = marked.parse(readme).replace(/\<a ([^>]*)\>/g, '<a target="_blank" $1>')
 export default defineComponent({
   name: "Koharu Label",
   props: {
-    baseURL: { type: String, default: '/' },
-    opts: { type: Object, default: () => ({}) }
+    baseURL: { type: String, default: '/' }
+  },
+  data() {
+    return {
+      bpm: '120',
+      basePitch: '60',
+      margeConsonant: false,
+      refinePitch: false,
+      useHarvest: false,
+      envelope: false
+    }
   },
   setup(props, ctx) {
     const msg = utils.assertByteorder('<')
@@ -23,27 +34,17 @@ export default defineComponent({
       iview.Message.error(msg)
       console.exception(msg)
     }
-    const opts = {
-      bpm: ref<string>('120'),
-      basePitch: ref<string>('60'),
-      margeConsonant: ref<boolean>(false),
-      refinePitch: ref<boolean>(false),
-      useHarvest: ref<boolean>(false),
-      envelope: ref<boolean>(false)
-    }
-    ctx.expose(opts)
     return {
       world: sr<PyWorld>(new PyWorld(props.baseURL)),
       handle: sr<FileSystemDirectoryHandle | null>(null),
       labFile: sr<File | null>(null),
       audio: sr<File | AudioData | null>(null),
       worldResult: sr<PyworldDio | null>(null),
-      inst: sr<SvpFile | null>(null),
-      ...opts
+      inst: sr<SvpFile | null>(null)
     }
   },
-  beforeCreate() {
-    this.$props.opts.value = this.$.exposed
+  mounted() {
+    this.$emit('mount:app', this)
   },
   computed: {
     audioName(): string | void {
@@ -212,7 +213,7 @@ export default defineComponent({
     const vm = this
     return h(Row, { gutter: 5 }, () => [
       h(Col, { xs: 24, lg: 12 }, () => [
-        h(DropFile, { global: !true, onChange: vm.handleChange }),
+        h(DropFile, { global: true, onChange: vm.handleChange }),
         h(Card, {
           icon: vm.labFile ? 'md-document' : '',
           title: vm.labFile ? vm.labFile.name : '需要 lab 文件'

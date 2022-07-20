@@ -1,14 +1,16 @@
-
+/**
+ * @createDate 2022-2-26 16:41:35
+*/
 import * as Vue from "vue"
 const { defineComponent, createVNode: h, ref, shallowRef: sr } = Vue
 import * as iview from "view-ui-plus"
 const { Row, Col, Card, Icon, Input, Button, ButtonGroup } = iview
-import DropFile from './drop-file.vue'
-import Awaiter from './awaiter.vue'
-import * as utils from '../koharu-label/utils'
-import { PyworldAll, PyWorld, AudioData } from '../koharu-label/utils'
-import { Ndarray, TypedArray, TypedArrayConstructor, TypeNdarray } from "../koharu-label/ndarray"
-import * as vox from "../koharu-label/vox"
+import DropFile from '../components/drop-file.vue'
+import Awaiter from '../components/awaiter.vue'
+import * as utils from './utils'
+import { PyworldAll, PyWorld, AudioData } from './utils'
+import { Ndarray, TypedArray, TypedArrayConstructor, TypeNdarray } from "./ndarray"
+import * as vox from "./vox"
 const utils2 = {
   *xparseLab(lab: string | string[], cb = (value: any) => { }): Generator<vox.LabLine> {
     const reg = /^\s*(\S+)\s+(\S+)\s+([\S\s]*?)\s*$/
@@ -77,6 +79,7 @@ const createProcesser = <T extends {
     try {
       const promise = this.output = cb.apply(this, args).then((data: any): string | null => {
         if (data instanceof Blob) { return URL.createObjectURL(data) }
+        if (data == null) this.output = null
         return data
       })
       await promise
@@ -89,34 +92,35 @@ const createProcesser = <T extends {
     }
   }
 }
-export const Main = defineComponent({
+const Main = defineComponent({
   name: 'Koharu Label Syncer',
   props: {
-    baseURL: { type: String, default: '/' },
-    opts: { type: Object, default: () => ({}) }
+    baseURL: { type: String, default: '/' }
   },
-  setup(props, ctx) {
-    const opts = {
-      world: sr<PyWorld>(new PyWorld(props.baseURL)),
-      f0File: sr<File | null>(null),
-      audio: sr<File | AudioData | null>(null),
-      worldResult: sr<PyworldAll | null>(null),
-      process: sr<string | null>(null),
-      output: sr<Promise<string | null> | string | null>(null),
-      imgs: sr<string[]>([]),
+  data() {
+    return {
+      process: null as string | null,
+      output: null as Promise<string | null> | null,
+      imgs: [] as string[],
 
-      lab0: sr<string>(''),
-      lab1: sr<string>(''),
+      lab0: '',
+      lab1: '',
       useSavefig: false,
 
       promptValue: null as string | null,
-      info: sr('')
+      info: ''
     }
-    ctx.expose(opts)
-    return opts
   },
-  beforeCreate() {
-    this.$props.opts.value = this.$.exposed
+  setup(props, ctx) {
+    return {
+      world: sr<PyWorld>(new PyWorld(props.baseURL)),
+      f0File: sr<File | null>(null),
+      audio: sr<File | AudioData | null>(null),
+      worldResult: sr<PyworldAll | null>(null)
+    }
+  },
+  mounted() {
+    this.$emit('mount:app', this)
   },
   computed: {
     outputAudioName() {
@@ -199,7 +203,7 @@ export const Main = defineComponent({
     }, () => '合成')
     return h(Row, { gutter: 5 }, () => [
       h(Col, { xs: 24, lg: 12 }, () => [
-        h(DropFile, { global: !true, onChange: vm.handleChange }),
+        h(DropFile, { global: true, onChange: vm.handleChange }),
         h(Card, {
           icon: vm.f0File ? 'md-document' : '',
           title: vm.f0File ? vm.f0File.name : '需要 f0 文件'
@@ -237,7 +241,7 @@ export const Main = defineComponent({
           }),
           empty: () => h(Card, { title: '合成' }, { extra: synthesizeButton }),
           rejected: () => h(Card, { title: '合成失败' }, { extra: synthesizeButton }),
-          fulfilled: (output: any, old: any) => h(Card, {}, {
+          fulfilled: (output: any) => h(Card, {}, {
             title: (name: any) => (name = vm.outputAudioName, h('p', {}, [
               h(Icon, { type: "md-document" }),
               h('a', { href: output, download: name }, name)
@@ -267,7 +271,7 @@ export const Main = defineComponent({
     ])
   }
 })
-export default Main
+export default (Main)
 type Main = InstanceType<typeof Main>
 Object.assign(Main.methods as any, {
   handleSynthesize: createProcesser<Main>('', async function () {

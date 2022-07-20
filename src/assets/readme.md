@@ -12,6 +12,8 @@
 PyWORLD是WORLD声码器的Python包装  
 使用WORLD声码器可从语音中提取声学特征，包括基频、频谱包络、非周期性指数  
 WORLD声码器提供了 `DIO` 和 `Harvest` 两个基频估计方法  
-在本页面控制台执行 `options.useHarvest=true` 可切换为 `Harvest`  
+在本页面控制台执行 `vm.useHarvest=true` 可切换为 `Harvest`  
 
 ### [唱歌VOICEVOX](#syncer)
+
+### [歌词转换工具](#lyric)
