@@ -26,7 +26,7 @@ export const DropGlobal = defineComponent({
 })
 export default defineComponent({
   name: 'DropFile',
-  emits: { change(files: Array<File>) { return isArray(files) } },
+  emits: { change(files: File[]) { return isArray(files) } },
   props: {
     accept: { type: String, default: '' },
     global: { type: Boolean, default: false },

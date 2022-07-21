@@ -51,7 +51,6 @@ const createCharCodeOffset = (reg: RegExp, i: number) => {
 export const utils = {
   replacer,
   replacerShort,
-  romaji,
   toHiragana: createCharCodeOffset(/[\u30a1-\u30f6]/g, -0x60),//カタカナをひらがなに変換する関数
   toKatakana: createCharCodeOffset(/[\u3041-\u3096]/g, 0x60),//ひらがなをカタカナに変換する関数
   download(sequence: string | BlobPart[] | Blob, filename = ''): void {
@@ -101,12 +100,12 @@ abstract class XML extends TypeAsText {
     return null
   }
   declare data: Document
-  abstract [Symbol.iterator](): Generator<Node>
+  abstract [Symbol.iterator](): Generator<Element>
   reset() {
     return this.data = XML.parse(this.text)
   }
-  getLyrics() {
-    return Array.from(this, el => el.textContent)
+  getLyrics(): string[] {
+    return Array.from(this, el => el.textContent ?? '')
   }
   setLyrics(_it: Iterable<string>) {
     const it = _it[Symbol.iterator]()
@@ -165,12 +164,12 @@ export const types = {
     }
   },
   musicxml: class extends XML {
-    *[Symbol.iterator](): Generator<Node> {
+    *[Symbol.iterator](): Generator<Element> {
       yield* this.data.querySelectorAll('lyric>text') as any
     }
   },
   vsqx: class extends XML {
-    *[Symbol.iterator](): Generator<Node> {
+    *[Symbol.iterator](): Generator<Element> {
       yield* this.data.querySelectorAll('note>y') as any
     }
   }

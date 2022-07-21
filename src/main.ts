@@ -1,6 +1,5 @@
 
 import * as Vue from "vue"
-const { defineComponent, createVNode: h } = Vue
 import * as iview from "view-ui-plus"
 import axios from 'axios'
 import msgpack from '@ygoe/msgpack'
