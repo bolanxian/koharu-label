@@ -1,6 +1,6 @@
 
-import { utils } from './utils'
-const { replacer, replacerShort, romaji } = utils
+import { romaji, utils } from './utils'
+const { replacer, replacerShort } = utils
 const map0 = new Map(Object.entries({
   'ar': 'a',
   'er': 'e',

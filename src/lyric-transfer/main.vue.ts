@@ -2,15 +2,24 @@
  * @createDate 2021-5-15 19:44:43
 */
 import * as Vue from "vue"
-const { defineComponent, createVNode: h, ref, shallowRef: sr } = Vue
+const { defineComponent, createVNode: h, shallowRef: sr } = Vue
 import * as iview from "view-ui-plus"
 const { Row, Col, Affix, Card, Icon, Input, Button, ButtonGroup, Checkbox } = iview
 import DropFile from '../components/drop-file.vue'
-import { utils, types } from './utils'
-const { romaji, toHiragana, toKatakana, download } = utils
-import * as pinyin from './pinyin'
-import hiragana2ChinesePronounce from './hiragana2chinese-pronounce'
 import Awaiter from "../components/awaiter.vue"
+import hiragana2ChinesePronounce from './hiragana2chinese-pronounce'
+import { romaji, utils, types } from './utils'
+const { toHiragana, toKatakana, download } = utils
+import * as pinyin from './pinyin'
+
+import pinyin_dict_withtone_raw from 'ipinyinjs/dict/pinyin_dict_withtone?raw'
+import pinyinUtil_raw from 'ipinyinjs/pinyinUtil?raw'
+const pinyinUtil_mod: any = {}
+Function('window', `${pinyin_dict_withtone_raw}
+window.pinyin_dict_withtone=pinyin_dict_withtone
+${pinyinUtil_raw}`)(pinyinUtil_mod)
+const pinyinUtil: any = pinyinUtil_mod.pinyinUtil
+const pinyinjs = Promise.resolve(pinyinUtil)
 
 const replaceFuncs: Record<string, (str: string) => string> = {
   debugPinyin: str => str.replace(pinyin.reg, (m, a = '', b) => `[${a},${b}]`),
@@ -25,14 +34,6 @@ const replaceFuncs: Record<string, (str: string) => string> = {
 }
 const phonemesModeSet = new Set(['hiraganaToChinesePronounce'])
 
-import pinyin_dict_withtone_raw from 'ipinyinjs/dict/pinyin_dict_withtone?raw'
-import pinyinUtil_raw from 'ipinyinjs/pinyinUtil?raw'
-const pinyinUtil_mod: any = {}
-Function('window', `${pinyin_dict_withtone_raw}
-window.pinyin_dict_withtone=pinyin_dict_withtone
-${pinyinUtil_raw}`)(pinyinUtil_mod)
-const pinyinUtil: any = pinyinUtil_mod.pinyinUtil
-const pinyinjs = Promise.resolve(pinyinUtil)
 export default defineComponent({
   name: 'Lyric Transfer',
   data() {
@@ -126,26 +127,17 @@ export default defineComponent({
   },
   render() {
     const vm = this
-    const on = { onClick: vm.handleReplace }
     return h('div', { class: 'container' }, [
       h(Row, { gutter: 5 }, () => [
-        h(Col, {
-          xs: 24, lg: 12
-        }, () => h(Affix, {}, () => [
-          vm.file ? h(Card, {
-            icon: 'md-document', title: vm.file.name + vm.length
-          }, {
+        h(Col, { xs: 24, lg: 12 }, () => h(Affix, {}, () => [
+          vm.file != null ? h(Card, { icon: 'md-document', title: vm.file.name + vm.length }, {
             extra: () => h(Button, { onClick: vm.close }, () => h(Icon, { type: "md-close" })),
             default: () => [
               h(Button, { onClick: vm.reset }, () => '重置'),
               h(Button, { style: { float: 'right' }, onClick: vm.export }, () => '导出')
             ]
-          }) : h(DropFile, {
-            global: true, onChange: vm.handleChange
-          }),
-          h(Card, {
-            title: '转换', style: { 'margin-top': '20px' }
-          }, {
+          }) : h(DropFile, { global: true, onChange: vm.handleChange }),
+          h(Card, { title: '转换', style: { 'margin-top': '20px' } }, {
             extra: () => h(Button, { onClick: vm.reverseCopy }, () => '←复制'),
             default: () => [
               h(Checkbox, {
@@ -153,62 +145,32 @@ export default defineComponent({
                 'onUpdate:modelValue'(val: boolean) { vm.phonemesMode = val }
               }, () => '音素模式'), h('br'),
               h(ButtonGroup, { style: { 'margin-top': '10px' } }, () => [
-                h(Button, {
-                  onClick: vm.handleReplace,
-                  'data-name': 'pinyinToRomaji'
-                }, () => '拼音→罗马字'),
-                h(Button, {
-                  onClick: vm.handleReplace,
-                  'data-name': 'pinyinToKatakana'
-                }, () => '拼音→片假名'),
-                h(Button, {
-                  onClick: vm.handleReplace,
-                  'data-name': 'romajiToKatakana'
-                }, () => '罗马字→片假名')
+                h(Button, { onClick: vm.handleReplace, 'data-name': 'pinyinToRomaji' }, () => '拼音→罗马字'),
+                h(Button, { onClick: vm.handleReplace, 'data-name': 'pinyinToKatakana' }, () => '拼音→片假名'),
+                h(Button, { onClick: vm.handleReplace, 'data-name': 'romajiToKatakana' }, () => '罗马字→片假名')
               ]), h('br'),
               h(ButtonGroup, { style: { 'margin-top': '10px' } }, () => [
-                h(Button, {
-                  onClick: vm.handleReplace,
-                  'data-name': 'toHiragana'
-                }, () => '片假名→平假名'),
-                h(Button, {
-                  onClick: vm.handleReplace,
-                  'data-name': 'toKatakana'
-                }, () => '平假名→片假名')
+                h(Button, { onClick: vm.handleReplace, 'data-name': 'toHiragana' }, () => '片假名→平假名'),
+                h(Button, { onClick: vm.handleReplace, 'data-name': 'toKatakana' }, () => '平假名→片假名')
               ]), h('br'),
               h(Awaiter, { promise: vm.pinyinjs }, {
                 empty: () => null,
                 default: (state: string, value: any) => {
                   const disabled = state !== 'fulfilled', loading = state === 'pending'
+                  const props = { disabled, loading, onClick: vm.handleReplace }
                   return [
                     h(ButtonGroup, { style: { 'margin-top': '10px' } }, () => [
-                      h(Button, {
-                        disabled, loading,
-                        onClick: vm.handleReplace,
-                        'data-name': 'hanziToPinyinTone'
-                      }, () => '汉字→拼音(带声调)'),
-                      h(Button, {
-                        disabled, loading,
-                        onClick: vm.handleReplace,
-                        'data-name': 'hanziToPinyinNumTone'
-                      }, () => '汉字→拼音(数字声调)'),
-                      h(Button, {
-                        disabled, loading,
-                        onClick: vm.handleReplace,
-                        'data-name': 'hanziToPinyin'
-                      }, () => '汉字→拼音')
-                    ]),
-                    '(gh/sxei/pinyinjs)',
-                    h('br')
+                      h(Button, { ...props, 'data-name': 'hanziToPinyinTone' }, () => '汉字→拼音(带声调)'),
+                      h(Button, { ...props, 'data-name': 'hanziToPinyinNumTone' }, () => '汉字→拼音(数字声调)'),
+                      h(Button, { ...props, 'data-name': 'hanziToPinyin' }, () => '汉字→拼音')
+                    ]), '(gh/sxei/pinyinjs)', h('br')
                   ]
                 }
               }),
               h(Button, {
-                style: { 'margin-top': '10px' },
-                onClick: vm.handleReplace,
+                style: { 'margin-top': '10px' }, onClick: vm.handleReplace,
                 'data-name': 'hiraganaToChinesePronounce'
-              }, () => '假名→汉语音素'),
-              '(sm38322727)'
+              }, () => '假名→汉语音素'), '(sm38322727)'
             ]
           })
         ])),
