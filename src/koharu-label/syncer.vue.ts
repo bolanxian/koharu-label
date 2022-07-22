@@ -6,7 +6,7 @@ const { defineComponent, createVNode: h, ref, shallowRef: sr } = Vue
 import * as iview from "view-ui-plus"
 const { Row, Col, Card, Icon, Input, Button, ButtonGroup } = iview
 import DropFile from '../components/drop-file.vue'
-import Awaiter from '../components/awaiter.vue'
+import Awaiter, { AwaiterState } from '../components/awaiter.vue'
 import * as utils from './utils'
 import { PyworldAll, PyWorld, AudioData } from './utils'
 import { Ndarray, TypedArray, TypedArrayConstructor, TypeNdarray } from "./ndarray"
@@ -69,22 +69,19 @@ const utils2 = {
     return JSON.stringify(json)
   }
 }
-const createProcesser = <T extends {
-  process: string | null
-  output: Promise<string | null> | string | null
-}>(name: string, cb: (this: T, ...args: any[]) => Promise<any>) => {
-  return async function (this: T, ...args: any[]) {
+const createProcesser = <
+  T extends { process: string | null, output: Promise<string | null> | null }, A extends unknown[] = []
+>(name: string, cb: (this: T, ...args: [...A]) => Promise<Blob | void>) => {
+  return async function (this: T, ...args: [...A]) {
     if (this.process != null) { return }
     this.process = name
     try {
-      const promise = this.output = cb.apply(this, args).then((data: any): string | null => {
+      const promise = this.output = cb.apply(this, args).then((data): string | null => {
         if (data instanceof Blob) { return URL.createObjectURL(data) }
-        if (data == null) this.output = null
-        return data
+        return null
       })
       await promise
     } catch (e) {
-      this.output = null
       iview.Message.error('合成失败')
       throw e
     } finally {
@@ -198,33 +195,30 @@ const Main = defineComponent({
   },
   render() {
     const vm = this
-    const synthesizeButton = () => h(Button, {
-      disabled: vm.f0File == null, onClick: vm.handleSynthesize
-    }, () => '合成')
     return h(Row, { gutter: 5 }, () => [
       h(Col, { xs: 24, lg: 12 }, () => [
         h(DropFile, { global: true, onChange: vm.handleChange }),
         h(Card, {
-          icon: vm.f0File ? 'md-document' : '',
-          title: vm.f0File ? vm.f0File.name : '需要 f0 文件'
+          icon: vm.f0File != null ? 'md-document' : '',
+          title: vm.f0File != null ? vm.f0File.name : '需要 f0 文件'
         }, {
           extra: () => h(Button, {
-            disabled: !vm.f0File,
+            disabled: vm.f0File == null,
             onClick: vm.closeF0File,
           }, () => h(Icon, { type: "md-close" }))
         }),
         h(Card, {
           icon: vm.audio instanceof AudioData ? 'md-document' : '',
-          title: vm.audio ? vm.audio instanceof AudioData ? vm.audio.name : '加载中' : '需要 wav 文件'
+          title: vm.audio != null ? vm.audio instanceof AudioData ? vm.audio.name : '加载中' : '需要 wav 文件'
         }, {
           default: () => vm.audio instanceof AudioData ? vm.audio.getInfo() : '',
           extra: () => h(ButtonGroup, {}, () => [
             h(Button, {
-              disabled: !vm.audio,
+              disabled: vm.audio == null,
               onClick: vm.exportOriginAudio
             }, () => '导出'),
             h(Button, {
-              disabled: !vm.audio,
+              disabled: vm.audio == null,
               onClick: vm.closeAudioFile
             }, () => h(Icon, { type: "md-close" }))
           ])
@@ -234,20 +228,24 @@ const Main = defineComponent({
           'onUpdate:value'(value: any, oldValue: any) {
             if (typeof oldValue === 'string') { URL.revokeObjectURL(oldValue) }
           }
-        }, {
-          pending: () => h(Card, { title: '合成中' }, {
-            extra: () => h(Button, { disabled: true }, () => '合成'),
-            default: () => h('div', {}, vm.info)
-          }),
-          empty: () => h(Card, { title: '合成' }, { extra: synthesizeButton }),
-          rejected: () => h(Card, { title: '合成失败' }, { extra: synthesizeButton }),
-          fulfilled: (output: any) => h(Card, {}, {
-            title: (name: any) => (name = vm.outputAudioName, h('p', {}, [
-              h(Icon, { type: "md-document" }),
-              h('a', { href: output, download: name }, name)
-            ])),
-            extra: synthesizeButton,
-            default: () => h('audio', { controls: '', src: output, style: { width: '100%' } })
+        }, (state: AwaiterState, output: any) => {
+          if (output == null) { state = 'empty' }
+          const fulfilled = state === 'fulfilled', rejected = state === 'rejected'
+          const loading = state === 'pending', empty = state === 'empty'
+          return h(Card, {}, {
+            title: () => h('p', {}, [h('span', {}, [
+              fulfilled ? h(Icon, { type: "md-document" }) : null,
+              fulfilled ? h('a', { href: output, download: vm.outputAudioName }, vm.outputAudioName) : null,
+              rejected ? '合成失败' : null,
+              loading ? '合成中' : null,
+              empty ? '合成' : null
+            ])]),
+            extra: () => h(Button, {
+              loading, disabled: vm.f0File == null, onClick: vm.handleSynthesize
+            }, () => '合成'),
+            default: () => fulfilled ? h('audio', {
+              controls: '', src: output, style: { width: '100%' }
+            }) : null
           })
         }),
         Array.from(vm.imgs, src => h('img', { src }))
@@ -274,7 +272,7 @@ const Main = defineComponent({
 export default (Main)
 type Main = InstanceType<typeof Main>
 Object.assign(Main.methods as any, {
-  handleSynthesize: createProcesser<Main>('', async function () {
+  handleSynthesize: createProcesser('', async function (this: Main) {
     const vm = this
     const { world, f0File, audio, worldResult, lab0, lab1 } = vm
     if (!(audio instanceof AudioData && worldResult != null)) {
@@ -287,7 +285,7 @@ Object.assign(Main.methods as any, {
     let result = await world.synthesize(...utils2.labelSync(lab0, lab1, f0, sp, ap, fs))
     return await world.encodeAudio(result, fs, info.format, info.subtype)
   }),
-  handleSynthesizeTest: createProcesser<Main>('', async function () {
+  handleSynthesizeTest: createProcesser('', async function (this: Main) {
     const vm = this
     const { world, audio, worldResult } = vm
     if (!(audio instanceof AudioData && worldResult != null)) { return }
@@ -296,7 +294,7 @@ Object.assign(Main.methods as any, {
     const result = await world.synthesize(f0, sp, ap, fs)
     return await world.encodeAudio(result, fs, info.format, info.subtype)
   }),
-  handleSynthesizeVox: createProcesser<Main>('', async function () {
+  handleSynthesizeVox: createProcesser('', async function (this: Main) {
     const vm = this, { world, lab0, f0File } = vm
     let { promptValue } = vm
     if (f0File == null) { return }

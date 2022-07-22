@@ -215,11 +215,11 @@ export default defineComponent({
       h(Col, { xs: 24, lg: 12 }, () => [
         h(DropFile, { global: true, onChange: vm.handleChange }),
         h(Card, {
-          icon: vm.labFile ? 'md-document' : '',
-          title: vm.labFile ? vm.labFile.name : '需要 lab 文件'
+          icon: vm.labFile != null ? 'md-document' : '',
+          title: vm.labFile != null ? vm.labFile.name : '需要 lab 文件'
         }, {
           extra: () => h(Button, {
-            disabled: !vm.labFile,
+            disabled: vm.labFile == null,
             onClick: vm.closeLabFile,
           }, () => h(Icon, { type: "md-close" }))
         }),

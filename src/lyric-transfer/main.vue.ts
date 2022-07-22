@@ -117,6 +117,7 @@ export default defineComponent({
         target = target.closest('button')
         if (target == null) { return }
         key = target.dataset.name
+        e.stopPropagation()
       }
       if (key == null) { return }
       const cb = replaceFuncs[key]
@@ -127,72 +128,75 @@ export default defineComponent({
   },
   render() {
     const vm = this
-    return h('div', { class: 'container' }, [
-      h(Row, { gutter: 5 }, () => [
-        h(Col, { xs: 24, lg: 12 }, () => h(Affix, {}, () => [
-          vm.file != null ? h(Card, { icon: 'md-document', title: vm.file.name + vm.length }, {
-            extra: () => h(Button, { onClick: vm.close }, () => h(Icon, { type: "md-close" })),
-            default: () => [
-              h(Button, { onClick: vm.reset }, () => '重置'),
-              h(Button, { style: { float: 'right' }, onClick: vm.export }, () => '导出')
-            ]
-          }) : h(DropFile, { global: true, onChange: vm.handleChange }),
-          h(Card, { title: '转换', style: { 'margin-top': '20px' } }, {
-            extra: () => h(Button, { onClick: vm.reverseCopy }, () => '←复制'),
-            default: () => [
-              h(Checkbox, {
-                modelValue: vm.phonemesMode,
-                'onUpdate:modelValue'(val: boolean) { vm.phonemesMode = val }
-              }, () => '音素模式'), h('br'),
-              h(ButtonGroup, { style: { 'margin-top': '10px' } }, () => [
-                h(Button, { onClick: vm.handleReplace, 'data-name': 'pinyinToRomaji' }, () => '拼音→罗马字'),
-                h(Button, { onClick: vm.handleReplace, 'data-name': 'pinyinToKatakana' }, () => '拼音→片假名'),
-                h(Button, { onClick: vm.handleReplace, 'data-name': 'romajiToKatakana' }, () => '罗马字→片假名')
-              ]), h('br'),
-              h(ButtonGroup, { style: { 'margin-top': '10px' } }, () => [
-                h(Button, { onClick: vm.handleReplace, 'data-name': 'toHiragana' }, () => '片假名→平假名'),
-                h(Button, { onClick: vm.handleReplace, 'data-name': 'toKatakana' }, () => '平假名→片假名')
-              ]), h('br'),
-              h(Awaiter, { promise: vm.pinyinjs }, {
-                empty: () => null,
-                default: (state: string, value: any) => {
+    return h(Row, { gutter: 5 }, () => [
+      h(Col, { xs: 24, lg: 12 }, () => h(Affix, {}, () => [
+        vm.file != null ? h(Card, { icon: 'md-document', title: vm.file.name + vm.length }, {
+          extra: () => h(Button, { onClick: vm.close }, () => h(Icon, { type: "md-close" })),
+          default: () => [
+            h(Button, { onClick: vm.reset }, () => '重置'),
+            h(Button, { style: { float: 'right' }, onClick: vm.export }, () => '导出')
+          ]
+        }) : h(DropFile, { global: true, onChange: vm.handleChange }),
+        h(Card, { title: '转换', style: { 'margin-top': '20px' } }, {
+          extra: () => h(Button, { onClick: vm.reverseCopy }, () => '←复制'),
+          default: () => [
+            h(Checkbox, {
+              modelValue: vm.phonemesMode,
+              'onUpdate:modelValue'(val: boolean) { vm.phonemesMode = val }
+            }, () => '音素模式'), h('br'),
+            h(ButtonGroup, { style: { 'margin-top': '10px' } }, () => [
+              h(Button, { onClick: vm.handleReplace, 'data-name': 'pinyinToRomaji' }, () => '拼音→罗马字'),
+              h(Button, { onClick: vm.handleReplace, 'data-name': 'pinyinToKatakana' }, () => '拼音→片假名'),
+              h(Button, { onClick: vm.handleReplace, 'data-name': 'romajiToKatakana' }, () => '罗马字→片假名')
+            ]), h('br'),
+            h(ButtonGroup, { style: { 'margin-top': '10px' } }, () => [
+              h(Button, { onClick: vm.handleReplace, 'data-name': 'toHiragana' }, () => '片假名→平假名'),
+              h(Button, { onClick: vm.handleReplace, 'data-name': 'toKatakana' }, () => '平假名→片假名')
+            ]), h('br'),
+            h(Awaiter, { promise: vm.pinyinjs }, {
+              empty: () => null,
+              default: (state: string, value: any) => [
+                h(ButtonGroup, { style: { 'margin-top': '10px' } }, () => {
                   const disabled = state !== 'fulfilled', loading = state === 'pending'
                   const props = { disabled, loading, onClick: vm.handleReplace }
                   return [
-                    h(ButtonGroup, { style: { 'margin-top': '10px' } }, () => [
-                      h(Button, { ...props, 'data-name': 'hanziToPinyinTone' }, () => '汉字→拼音(带声调)'),
-                      h(Button, { ...props, 'data-name': 'hanziToPinyinNumTone' }, () => '汉字→拼音(数字声调)'),
-                      h(Button, { ...props, 'data-name': 'hanziToPinyin' }, () => '汉字→拼音')
-                    ]), '(gh/sxei/pinyinjs)', h('br')
+                    h(Button, { ...props, 'data-name': 'hanziToPinyinTone' }, () => '汉字→拼音(带声调)'),
+                    h(Button, { ...props, 'data-name': 'hanziToPinyinNumTone' }, () => '汉字→拼音(数字声调)'),
+                    h(Button, { ...props, 'data-name': 'hanziToPinyin' }, () => '汉字→拼音')
                   ]
-                }
-              }),
-              h(Button, {
-                style: { 'margin-top': '10px' }, onClick: vm.handleReplace,
-                'data-name': 'hiraganaToChinesePronounce'
-              }, () => '假名→汉语音素'), '(sm38322727)'
-            ]
-          })
-        ])),
-        h(Col, { xs: 12, lg: 6 }, () => [
-          h(Input, {
-            type: "textarea",
-            autosize: { minRows: 20, maxRows: 1 / 0 },
-            placeholder: '输入歌词，或者导入文件',
-            modelValue: vm.lyrics,
-            'onUpdate:modelValue'(val: string) { vm.lyrics = val }
-          })
-        ]),
-        h(Col, { xs: 12, lg: 6 }, () => [
-          h(Input, {
-            type: "textarea",
-            autosize: { minRows: 20, maxRows: 1 / 0 },
-            placeholder: '结果显示在这里，或者导出文件',
-            modelValue: vm.output,
-            'onUpdate:modelValue'(val: string) { vm.output = val }
-          })
-        ])
+                }), '(',
+                h('a', { href: 'https://github.com/sxei/pinyinjs/', target: '_blank' }, 'pinyinjs'),
+                ')', h('br')
+              ]
+            }),
+            h(Button, {
+              style: { 'margin-top': '10px' }, onClick: vm.handleReplace,
+              'data-name': 'hiraganaToChinesePronounce'
+            }, () => '假名→汉语音素'), '(',
+            h('a', { href: 'https://www.nicovideo.jp/watch/sm38322727', target: '_blank' }, 'sm38322727'),
+            ')', h('br')
+          ]
+        })
+      ])),
+      h(Col, { xs: 12, lg: 6 }, () => [
+        h(Input, {
+          type: "textarea",
+          autosize: { minRows: 20, maxRows: 1 / 0 },
+          placeholder: '输入歌词，或者导入文件',
+          modelValue: vm.lyrics,
+          'onUpdate:modelValue'(val: string) { vm.lyrics = val }
+        })
+      ]),
+      h(Col, { xs: 12, lg: 6 }, () => [
+        h(Input, {
+          type: "textarea",
+          autosize: { minRows: 20, maxRows: 1 / 0 },
+          placeholder: '结果显示在这里，或者导出文件',
+          modelValue: vm.output,
+          'onUpdate:modelValue'(val: string) { vm.output = val }
+        })
       ])
     ])
+
   }
 })
