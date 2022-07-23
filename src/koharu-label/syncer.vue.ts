@@ -245,9 +245,7 @@ const Main = defineComponent({
               loading, disabled: vm.f0File == null, onClick: vm.handleSynthesize
             }, () => '合成'),
             default: () => [
-              fulfilled ? h('audio', {
-                controls: '', src: output, style: { width: '100%' }
-              }) : null,
+              fulfilled ? h('audio', { controls: '', src: output, style: { width: '100%' } }) : null,
               loading ? h('div', {}, vm.info) : null
             ]
           })
