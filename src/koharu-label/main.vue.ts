@@ -55,17 +55,15 @@ export default defineComponent({
     },
     audioMsg(): string {
       const { world, audio, worldResult } = this
-      if (audio) {
+      if (audio != null) {
         if (audio instanceof AudioData) {
           return audio.getInfo()
-        } else if (worldResult != null) {
-          return ''
-        } else {
+        }
+        if (worldResult == null) {
           return `使用 ${world.name} 导入音频文件 ${audio.name}`
         }
-      } else {
-        return `PyWorld:${world.baseURL}`
       }
+      return `PyWorld:${world.baseURL}`
     }
   },
   methods: {

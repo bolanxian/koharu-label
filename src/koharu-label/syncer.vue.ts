@@ -71,13 +71,14 @@ const utils2 = {
 }
 const createProcesser = <
   T extends { process: string | null, output: Promise<string | null> | null }, A extends unknown[] = []
->(name: string, cb: (this: T, ...args: [...A]) => Promise<Blob | void>) => {
+>(name: string, cb: (this: T, ...args: [...A]) => Promise<Blob | null | undefined>) => {
   return async function (this: T, ...args: [...A]) {
     if (this.process != null) { return }
     this.process = name
     try {
       const promise = this.output = cb.apply(this, args).then((data): string | null => {
         if (data instanceof Blob) { return URL.createObjectURL(data) }
+        if (data === void 0) { this.output = null }
         return null
       })
       await promise
@@ -184,7 +185,7 @@ const Main = defineComponent({
       const file = await world.encodeAudio(data, fs, info.format, info.subtype)
       utils.download([file], name)
     },
-    log(msg: string | null) {
+    log(msg?: string | null) {
       if (msg == null) { this.info = ''; return }
       this.info = msg
       iview.Message.info(msg)
@@ -229,7 +230,7 @@ const Main = defineComponent({
             if (typeof oldValue === 'string') { URL.revokeObjectURL(oldValue) }
           }
         }, (state: AwaiterState, output: any) => {
-          if (output == null) { state = 'empty' }
+          if (state === 'fulfilled' && output == null) { state = 'pending' }
           const fulfilled = state === 'fulfilled', rejected = state === 'rejected'
           const loading = state === 'pending', empty = state === 'empty'
           return h(Card, {}, {
@@ -243,9 +244,10 @@ const Main = defineComponent({
             extra: () => h(Button, {
               loading, disabled: vm.f0File == null, onClick: vm.handleSynthesize
             }, () => '合成'),
-            default: () => fulfilled ? h('audio', {
-              controls: '', src: output, style: { width: '100%' }
-            }) : null
+            default: () => [
+              fulfilled ? h('audio', { controls: '', src: output, style: { width: '100%' } }) : null,
+              loading ? h('div', {}, vm.info) : null
+            ]
           })
         }),
         Array.from(vm.imgs, src => h('img', { src }))
@@ -273,21 +275,19 @@ export default (Main)
 type Main = InstanceType<typeof Main>
 Object.assign(Main.methods as any, {
   handleSynthesize: createProcesser('', async function (this: Main) {
-    const vm = this
-    const { world, f0File, audio, worldResult, lab0, lab1 } = vm
+    const vm = this, { world, f0File, audio, worldResult, lab0, lab1 } = vm
     if (!(audio instanceof AudioData && worldResult != null)) {
-      setTimeout(vm.handleSynthesizeVox); return
+      setTimeout(vm.handleSynthesizeVox); return null
     }
     const { fs, info } = audio, { sp, ap } = worldResult
     if (info == null || f0File == null) { return }
     vm.log('开始 WORLD 合成')
     const f0 = new Float64Array(await f0File.arrayBuffer())
-    let result = await world.synthesize(...utils2.labelSync(lab0, lab1, f0, sp, ap, fs))
+    const result = await world.synthesize(...utils2.labelSync(lab0, lab1, f0, sp, ap, fs))
     return await world.encodeAudio(result, fs, info.format, info.subtype)
   }),
   handleSynthesizeTest: createProcesser('', async function (this: Main) {
-    const vm = this
-    const { world, audio, worldResult } = vm
+    const vm = this, { world, audio, worldResult } = vm
     if (!(audio instanceof AudioData && worldResult != null)) { return }
     const { fs, info } = audio, { f0, sp, ap } = worldResult
     if (info == null) { return }
@@ -298,7 +298,7 @@ Object.assign(Main.methods as any, {
     const vm = this, { world, lab0, f0File } = vm
     let { promptValue } = vm
     if (f0File == null) { return }
-    vm.log(null)
+    vm.log()
     try {
       let speakers = await vox.getSpeakers()
       var msg = 'Input speaker id,min vowel length,max vowel length,pitch:\n' + speakers
@@ -339,6 +339,8 @@ Object.assign(Main.methods as any, {
     vm.lab1 = lab1.replace(/#([^\n]+\n)$/, '$1')
     vm.audio = audio
     vm.worldResult = result
+    vm.log()
     setTimeout(vm.handleSynthesize)
+    return null
   })
 })
