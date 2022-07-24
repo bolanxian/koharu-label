@@ -6,6 +6,9 @@ import msgpack from '@ygoe/msgpack'
 import * as z from 'zod'
 import App from './components/app.vue'
 
+import './components/drop-file.vue'
+import './components/awaiter.vue'
+
 const baseURL = location.hostname.match(/(?<=\.)git[\w-]+(?=\.io$)/i) || import.meta.env.DEV ? 'http://127.0.0.1:6701/' : '/'
 const app = Vue.createApp(App, {
   baseURL, 'onMount:app'(value: any) {

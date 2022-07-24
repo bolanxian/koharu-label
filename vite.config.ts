@@ -5,7 +5,9 @@ import * as path from 'path'
 export default defineConfig({
   base: './',
   build: {
-    minify: false
+    minify: false,
+    target: 'esnext',
+    cssCodeSplit: false
   },
   plugins: [vue(), splitVendorChunkPlugin()]
 })
