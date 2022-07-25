@@ -6,7 +6,7 @@ export type AwaiterState = State
 export const Awaiter = defineComponent({
   name: 'Awaiter',
   props: { promise: null },
-  emits: { 'update:value': null },
+  emits: { 'settle': null },
   setup() {
     return {
       state: sr<State>('empty'),
@@ -17,29 +17,28 @@ export const Awaiter = defineComponent({
     promise: {
       handler(promise) {
         if (promise == null) {
-          this.state = 'empty'
-          this.value = void 0
+          this.settle('empty', void 0)
           return
         }
-        this.state = 'pending'
-        this.value = void 0
-        Promise.resolve(promise).then((val) => {
-          if (this.promise !== promise) { return }
-          this.state = 'fulfilled'
-          this.value = val
+        this.settle('pending', void 0)
+        Promise.resolve(promise).then((value) => {
+          if (this.promise === promise) { this.settle('fulfilled', value) }
         }, (e) => {
-          if (this.promise !== promise) { return }
-          this.state = 'rejected'
-          this.value = e
+          if (this.promise === promise) { this.settle('rejected', e) }
         })
-      }, immediate: true
-    },
-    value(value, oldValue) {
-      this.$emit('update:value', value, oldValue)
+      },
+      immediate: true
+    }
+  },
+  methods: {
+    settle(_state: State, _value: any) {
+      const { state, value } = this
+      this.state = _state; this.value = _value
+      this.$emit('settle', _state, _value, state, value)
     }
   },
   render() {
-    const { value, state } = this
+    const { state, value } = this
     let fn = this.$slots[state]
     if (fn != null) { return fn(value) }
     fn = this.$slots.default

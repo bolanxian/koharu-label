@@ -102,7 +102,7 @@ export default defineComponent({
       } else {
         inst.setLyrics(lrcs)
       }
-      download(inst.export(), file.name.replace(/(\.\w+)$/, '_export$1'))
+      download([inst.export()], file.name.replace(/(?=(?:\.\w*)?$)/, '_export'))
     },
     reverseCopy() {
       this.lyrics = this.output

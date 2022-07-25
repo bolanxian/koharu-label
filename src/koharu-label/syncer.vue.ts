@@ -226,10 +226,11 @@ const Main = defineComponent({
         }),
         h(Awaiter, {
           promise: vm.output,
-          'onUpdate:value'(value: any, oldValue: any) {
-            if (typeof oldValue === 'string') { URL.revokeObjectURL(oldValue) }
+          onSettle(state: AwaiterState, value: Awaited<typeof vm["output"]>, _state: typeof state, _value: typeof value) {
+            //console.log('onSettle', state, value, _state, _value)
+            if (_state === 'fulfilled' && typeof _value === 'string') { URL.revokeObjectURL(_value) }
           }
-        }, (state: AwaiterState, output: any) => {
+        }, (state: AwaiterState, output: Awaited<typeof vm["output"]>) => {
           if (state === 'fulfilled' && output == null) { state = 'pending' }
           const fulfilled = state === 'fulfilled', rejected = state === 'rejected'
           const loading = state === 'pending', empty = state === 'empty'
