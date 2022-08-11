@@ -34,10 +34,7 @@ for (const [name, Ctor] of Object.entries(types) as [Types, TypedArrayConstructo
   typeToCtor.set(name, Ctor)
 }
 
-const { construct } = Reflect, { call } = Function.prototype
-const hasOwn = Object.hasOwn || call.bind({}.hasOwnProperty)
-const arrayProto = Array.prototype, mul = (a: number, b: number): number => a * b
-
+const { call } = Function.prototype, mul = (a: number, b: number): number => a * b
 export class Ndarray<T extends TypedArray = TypedArray> extends Array<unknown>{
   static mul = mul
   static _subarray = call.bind(typedArray.subarray) as <T extends TypedArray>(thisArg: T, begin?: number, end?: number) => T

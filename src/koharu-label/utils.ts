@@ -3,7 +3,8 @@ import { default as axios, AxiosRequestHeaders, AxiosResponse, AxiosInstance } f
 import msgpack from "@ygoe/msgpack"
 import { Ndarray, TypedArray } from "./ndarray"
 import * as z from 'zod'
-const { toString } = Object.prototype
+const { call } = Function.prototype, { toString } = Object.prototype
+export const hasOwn = Object.hasOwn || call.bind({}.hasOwnProperty)
 const plainObjects = new Set(['[object Object]', '[object Array]'])
 export const isPlainObject = (data: any): data is Record<string | number | symbol, any> => plainObjects.has(toString.call(data))
 const zodFloat64Array = Ndarray.refine(1, 'float64')
@@ -265,4 +266,29 @@ export const saveFile = async (handle: FileSystemDirectoryHandle, sequence: Blob
   } finally {
     await writable.close()
   }
+}
+const Locale: void | typeof Intl.Locale = window?.Intl?.Locale ?? null
+const maximize = typeof Locale === 'function' ? (lang: string) => new Locale(lang).maximize().baseName : String
+type MapLang = boolean | string | Record<string, string>
+export const multiLocale = (map: Record<string, MapLang>, langs = navigator.languages) => {
+  for (let lang of langs) {
+    let mapLang: void | MapLang
+    if (hasOwn(map, lang)) {
+      mapLang = map[lang]
+    } else if (hasOwn(map, lang = maximize(lang))) {
+      mapLang = map[lang]
+    }
+
+    if (typeof mapLang === 'string') {
+      mapLang = map[mapLang]
+    }
+    if (mapLang === true) {
+      return String
+    } else if (typeof mapLang === 'object') {
+      const map = mapLang
+      return (msg: string) => hasOwn(map, msg) ? map[msg] : msg
+    }
+  }
+  return String
+  //throw new RangeError(`invalid language tag: ${JSON.stringify(langs)}`)
 }

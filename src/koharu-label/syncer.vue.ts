@@ -90,6 +90,19 @@ const createProcesser = <
     }
   }
 }
+const T = utils.multiLocale({
+  'zh-CN': 'zh-Hans-CN',
+  "zh-Hans-CN": true,
+  "ja-Jpan-JP": {},
+  'en': 'en-Latn-US',
+  'en-US': 'en-Latn-US',
+  "en-Latn-US": {
+    '开始 WORLD 合成': 'start WORLD synthesis',
+    '连接 VOICEVOX ENGINE 失败': 'connect VOICEVOX ENGINE failed',
+    '开始 WORLD 分析': 'start WORLD analysis',
+    '输入　角色ID，最小元音长度，最大元音长度，音高：\n': 'Input speaker id,min vowel length,max vowel length,pitch:\n'
+  },
+})
 const Main = defineComponent({
   name: 'Koharu Label Syncer',
   props: {
@@ -215,11 +228,11 @@ const Main = defineComponent({
           default: () => vm.audio instanceof AudioData ? vm.audio.getInfo() : '',
           extra: () => h(ButtonGroup, {}, () => [
             h(Button, {
-              disabled: vm.audio == null,
+              disabled: !(vm.audio instanceof AudioData),
               onClick: vm.exportOriginAudio
             }, () => '导出'),
             h(Button, {
-              disabled: vm.audio == null,
+              disabled: !(vm.audio instanceof AudioData),
               onClick: vm.closeAudioFile
             }, () => h(Icon, { type: "md-close" }))
           ])
@@ -282,7 +295,7 @@ Object.assign(Main.methods as any, {
     }
     const { fs, info } = audio, { sp, ap } = worldResult
     if (info == null || f0File == null) { return }
-    vm.log('开始 WORLD 合成')
+    vm.log(T('开始 WORLD 合成'))
     const f0 = new Float64Array(await f0File.arrayBuffer())
     const result = await world.synthesize(...utils2.labelSync(lab0, lab1, f0, sp, ap, fs))
     return await world.encodeAudio(result, fs, info.format, info.subtype)
@@ -302,9 +315,9 @@ Object.assign(Main.methods as any, {
     vm.log()
     try {
       let speakers = await vox.getSpeakers()
-      var msg = 'Input speaker id,min vowel length,max vowel length,pitch:\n' + speakers
+      var msg = T('输入　角色ID，最小元音长度，最大元音长度，音高：\n') + speakers
     } catch (e) {
-      iview.Message.error('连接 VOICEVOX ENGINE 失败')
+      iview.Message.error(T('连接 VOICEVOX ENGINE 失败'))
       return
     }
     if (promptValue == null) { promptValue = '8,0.05,0.15,5.8' }
@@ -320,7 +333,7 @@ Object.assign(Main.methods as any, {
     let Ctor: TypedArrayConstructor = Float64Array, lastInfo = { format: '', subtype: '' }, lastFs = 24000
     for (i = 0; i < querys.length; i++) {
       const query = querys[i]
-      vm.log(`开始 VOICEVOX 合成 (${i + 1}/${querys.length})`)
+      vm.log(`${T('开始 VOICEVOX 合成')} (${i + 1}/${querys.length})`)
       const file = await vox.synthesis(id, query)
       const { fs, info, data } = await world.decodeAudio(file)
       lab1 += vox.generateLab(query, offset).replace(/([^\n]+\n)$/, '#$1')
@@ -330,7 +343,7 @@ Object.assign(Main.methods as any, {
       lastInfo = info
       lastFs = fs
     }
-    vm.log('开始 WORLD 分析')
+    vm.log(T('开始 WORLD 分析'))
     const audio = new AudioData(new Ctor(await new Blob(datas).arrayBuffer()), lastFs)
     audio.name = f0File.name.replace(/\.f0$/, `(${promptValue}).wav`)
     audio.info = lastInfo

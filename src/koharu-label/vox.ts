@@ -1,5 +1,7 @@
 
 import { default as axios } from "axios"
+const baseURL = 'http://127.0.0.1:50021/'
+const { padStart } = String.prototype, { trunc } = Math
 const vowels = 'pau,sil,cl,a,i,u,e,o,N'.split(',')
 const consonants = 'k,ky,g,gy,s,sh,z,t,ts,ty,ch,d,dy,n,ny,h,hy,b,by,f,p,py,m,my,y,r,ry,v,w,j'.split(',')
 export type LabLine = [number, number, string]
@@ -13,7 +15,7 @@ function* xparseLab(lab: string | string[]): Generator<LabLine> {
     yield [+off, +off2, lrc]
   }
 }
-function* data_flag(x: [number, number, string][]): Generator<number> {
+function* data_flag(x: Lab): Generator<number> {
   const len = x.length - 1
   let i = 0, j = 0
   for (; i < len; i++) {
@@ -25,7 +27,7 @@ function* data_flag(x: [number, number, string][]): Generator<number> {
 const margeLab = (_lab: string | string[]): Lab => {
   const lab = Array.from(xparseLab(_lab))
   const flags = Array.from(data_flag(lab))
-  const newLab: [number, number, string][] = []
+  const newLab: Lab = []
   let i = 0
   for (; i < flags.length; i++) {
     const flag = flags[i]
@@ -86,80 +88,70 @@ const labToQuerys = (_lab: string | Lab, {
   return querys
 }
 const getSpeakers = async () => {
-  const { data } = await axios.get('http://127.0.0.1:50021/speakers')
+  const { data } = await axios.get('/speakers', { baseURL })
   let str = ''
   for (const speaker of data) {
     for (const style of speaker.styles) {
-      str += `${style.id}:${speaker.name}(${style.name})\n`
+      const id = padStart.call(style.id, 3, ' ')
+      const name = padStart.call(speaker.name, 6, '\u3000')
+      str += `${id}:${name}(${style.name})\n`
     }
   }
   return str
 }
 const synthesis = async (id: number | string, _query: any) => {
-  let { accentPhrases, ...query } = _query
-  query.accent_phrases = accentPhrases
-  for (const accentPhrase of accentPhrases) {
-    for (const mora of accentPhrase.moras) {
-      mora.consonant_length = mora.consonantLength
-      mora.vowel_length = mora.vowelLength
-    }
-  }
-  const url = 'http://127.0.0.1:50021/synthesis?speaker=' + id
-  const { data } = await axios.post<Blob>(url, query, { responseType: 'blob' })
+  const { accentPhrases, ...query } = _query
+  query.accent_phrases = Array.from(accentPhrases as any[], _accentPhrase => {
+    const { moras, ...accentPhrase } = _accentPhrase
+    accentPhrase.moras = Array.from(moras as any[], _mora => {
+      const { consonantLength, vowelLength, ...mora } = _mora
+      mora.consonant_length = consonantLength
+      mora.vowel_length = vowelLength
+      return mora
+    })
+    return accentPhrase
+  })
+  const { data } = await axios.post<Blob>('/synthesis?speaker=' + id, query, { baseURL, responseType: 'blob' })
   return data
 }
 //from https://github.com/VOICEVOX/voicevox/blob/main/src/store/audio.ts
-const generateLab = (query: any, offset = 0): string => {
-  //const query = state.audioItems[audioKey].query
-  if (query == null) return ''
-  const speedScale = query.speedScale
+const xgenerateLab = function* (query: any, offset = 0): Generator<LabLine> {
+  if (query == null) { return }
+  const { speedScale } = query, rate = 10000000
+  const x = (time: number, lrc: string = 'pau'): LabLine => {
+    const a = trunc(offset)
+    offset += (time * rate) / speedScale
+    const b = trunc(offset)
+    return [a, b, lrc]
+  }
 
-  let labString = ""
-  let timestamp = offset
-
-  labString += timestamp.toFixed() + " "
-  timestamp += (query.prePhonemeLength * 10000000) / speedScale
-  labString += timestamp.toFixed() + " "
-  labString += "pau\n"
-
+  yield x(query.prePhonemeLength)
   for (const accentPhrase of query.accentPhrases) {
     for (const mora of accentPhrase.moras) {
       if (mora.consonantLength != null && mora.consonant != null) {
-        labString += timestamp.toFixed() + " "
-        timestamp += (mora.consonantLength * 10000000) / speedScale
-        labString += timestamp.toFixed() + " "
-        labString += mora.consonant + "\n"
+        yield x(mora.consonantLength, mora.consonant)
       }
-      labString += timestamp.toFixed() + " "
-      timestamp += (mora.vowelLength * 10000000) / speedScale
-      labString += timestamp.toFixed() + " "
-      if (mora.vowel !== "N") {
-        labString += mora.vowel.toLowerCase() + "\n"
-      } else {
-        labString += mora.vowel + "\n"
-      }
+      yield x(mora.vowelLength, mora.vowel !== "N" ? mora.vowel.toLowerCase() : mora.vowel)
     }
-
-    if (accentPhrase.pauseMora != null) {
-      labString += timestamp.toFixed() + " "
-      timestamp += (accentPhrase.pauseMora.vowelLength * 10000000) / speedScale
-      labString += timestamp.toFixed() + " "
-      labString += accentPhrase.pauseMora.vowel + "\n"
+    const { pauseMora } = accentPhrase
+    if (pauseMora != null) {
+      yield x(pauseMora.vowelLength, pauseMora.vowel)
     }
   }
-
-  labString += timestamp.toFixed() + " "
-  timestamp += (query.postPhonemeLength * 10000000) / speedScale
-  labString += timestamp.toFixed() + " "
-  labString += "pau\n"
-
-  return labString
-
+  yield x(query.postPhonemeLength)
+}
+const generateLab = (query: any, offset = 0): string => {
+  let lab = ""
+  for (const line of xgenerateLab(query, offset)) {
+    lab += line.join(' ') + '\n'
+  }
+  return lab
 }
 export {
   margeLab,
   labToQuerys,
   getSpeakers,
   synthesis,
+  xgenerateLab,
   generateLab
 }
