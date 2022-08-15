@@ -159,10 +159,14 @@ export default defineComponent({
           f0[i] = left + ratio * j
         }
       }
-      const sequence = [f0]
+      let sequence: Float64Array[]
       if (len > f0.byteLength) {
         len = (len - f0.byteLength) / Float64Array.BYTES_PER_ELEMENT
-        sequence.push(new Float64Array(len).fill(f0.at(-1) ?? 0))
+        sequence = [f0, new Float64Array(len).fill(f0.at(-1) ?? 0)]
+      } else if (len < f0.byteLength) {
+        sequence = [f0.subarray(0, len / Float64Array.BYTES_PER_ELEMENT)]
+      } else {
+        sequence = [f0]
       }
       console.log(zeroRanges, sequence)
       this.saveFile(sequence, audioName + '.f0')
