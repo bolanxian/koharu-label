@@ -9,8 +9,9 @@ import DropFile from '../components/drop-file.vue'
 import Awaiter, { AwaiterState } from '../components/awaiter.vue'
 import * as utils from './utils'
 import { PyworldAll, PyWorld, AudioData } from './utils'
-import { Ndarray, TypedArray, TypedArrayConstructor, TypeNdarray } from "./ndarray"
-import * as vox from "./vox"
+import { Ndarray, TypedArray, TypedArrayConstructor, TypeNdarray } from './ndarray'
+import IteratorStream from './iterator-stream'
+import * as vox from './vox'
 const utils2 = {
   *xparseLab(lab: string | string[], cb = (value: any) => { }): Generator<vox.LabLine> {
     const reg = /^\s*(\S+)\s+(\S+)\s+([\S\s]*?)\s*$/
@@ -326,16 +327,27 @@ Object.assign(Main.methods as any, {
     vm.promptValue = promptValue
     const [id, minVowelLength, maxVowelLength, pitch] = promptValue.split(',')
     //lab0=vox.margeLab(lab0)
-    const querys = vox.labToQuerys(lab0, {
+    const querys: any[] = vox.labToQuerys(lab0, {
       minVowelLength: +minVowelLength, maxVowelLength: +maxVowelLength, pitch: +pitch
     })
-    let i, offset = 0, lab1 = '', datas = []
+    const dev = import.meta.env.DEV
+    const stream = IteratorStream.from(querys.entries()).pipe(async function* (it) {
+      for await (const [i, query] of it) {
+        const msg = `${T('开始 VOICEVOX 合成')} (${i + 1}/${querys.length})`
+        vm.log(msg)
+        dev && console.log(`${msg} start`)
+        const file = await vox.synthesis(id, query)
+        dev && console.log(`${msg} end`)
+        yield { i, query, file }
+      }
+    })
+    let offset = 0, lab1 = '', datas = []
     let Ctor: TypedArrayConstructor = Float64Array, lastInfo = { format: '', subtype: '' }, lastFs = 24000
-    for (i = 0; i < querys.length; i++) {
-      const query = querys[i]
-      vm.log(`${T('开始 VOICEVOX 合成')} (${i + 1}/${querys.length})`)
-      const file = await vox.synthesis(id, query)
+    for await (const { i, query, file } of stream) {
+      const msg = `decodeAudio (${i + 1}/${querys.length})`
+      dev && console.log(`${msg} start`)
       const { fs, info, data } = await world.decodeAudio(file)
+      dev && console.log(`${msg} end`)
       lab1 += vox.generateLab(query, offset).replace(/([^\n]+\n)$/, '#$1')
       offset += (data.length / fs) * 10000000
       datas.push(data)
@@ -343,6 +355,7 @@ Object.assign(Main.methods as any, {
       lastInfo = info
       lastFs = fs
     }
+
     vm.log(T('开始 WORLD 分析'))
     const audio = new AudioData(new Ctor(await new Blob(datas).arrayBuffer()), lastFs)
     audio.name = f0File.name.replace(/\.f0$/, `(${promptValue}).wav`)

@@ -177,7 +177,7 @@ export class AudioData {
     }
     return result
   }
-  toWave(): Blob {
+  toWave(): Blob & never {
     throw new Error("Function not implemented.")
   }
   toAudioBuffer(): AudioBuffer {

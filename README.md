@@ -16,8 +16,8 @@
 - 本工具仅做基本的处理，对于VOICEVOX，存在特定元音提前结束的现象，需注意修改
 
 
-## 关于 [PyWORLD](https://github.com/JeremyCCHsu/Python-Wrapper-for-World-Vocoder/)
-PyWORLD是WORLD声码器的Python包装。  
+## 关于 PyWORLD
+[PyWORLD](https://github.com/JeremyCCHsu/Python-Wrapper-for-World-Vocoder/)是WORLD声码器的Python包装。  
 [WORLD](https://github.com/mmorise/World)是高质量语音分析、操作和合成系统。  
 可以估计基频(F0)、频谱包络、非周期性指数，也可以仅使用估计参数合成语音。  
 
