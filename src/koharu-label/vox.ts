@@ -1,5 +1,5 @@
+import { isPlainObject } from "./utils"
 
-import { default as axios } from "axios"
 const baseURL = 'http://127.0.0.1:50021/'
 const { padStart } = String.prototype, { trunc } = Math
 const vowels = 'pau,sil,cl,a,i,u,e,o,N'.split(',')
@@ -76,7 +76,7 @@ const labToQuerys = (_lab: string | Lab, {
       const vowel = lab[i + 1]
       if (vowels.includes(vowel[2])) {
         moras.push({
-          text: lrc + vowel,
+          text: lrc + vowel[2],
           consonant: lrc, consonantLength: (lab[i][1] - lab[i][0]) / 10000000,
           vowel: vowel[2], vowelLength: getVowelLength((vowel[1] - vowel[0]) / 10000000),
           pitch
@@ -87,8 +87,31 @@ const labToQuerys = (_lab: string | Lab, {
   }
   return querys
 }
+const voxFetch = async (url: string, requestData?: any, init: RequestInit = {}) => {
+  url = new URL(url, baseURL).href
+  if (requestData != null) {
+    init.method ??= 'POST'
+    if (isPlainObject(requestData)) {
+      init.headers = new Headers(init.headers)
+      init.headers.set('content-type', "application/json")
+      init.body = JSON.stringify(requestData)
+    } else {
+      init.body = requestData
+    }
+  }
+  init.credentials ??= 'omit'
+  const request = new Request(url, init)
+  const response = await fetch(request)
+  const { status } = response
+  if (!(status >= 200 && status < 300)) {
+    response.body?.cancel()
+    throw new TypeError(`Request failed with status code ${status}`)
+  }
+  return { request, response }
+}
 const getSpeakers = async () => {
-  const { data } = await axios.get('/speakers', { baseURL })
+  const { response } = await voxFetch('/speakers')
+  const data = await response.json()
   let str = ''
   for (const speaker of data) {
     for (const style of speaker.styles) {
@@ -99,7 +122,7 @@ const getSpeakers = async () => {
   }
   return str
 }
-const synthesis = async (id: number | string, _query: any) => {
+const presendQuery = (_query: any) => {
   const { accentPhrases, ...query } = _query
   query.accent_phrases = Array.from(accentPhrases as any[], _accentPhrase => {
     const { moras, ...accentPhrase } = _accentPhrase
@@ -111,8 +134,16 @@ const synthesis = async (id: number | string, _query: any) => {
     })
     return accentPhrase
   })
-  const { data } = await axios.post<Blob>('/synthesis?speaker=' + id, query, { baseURL, responseType: 'blob' })
-  return data
+  return query
+}
+const synthesis = async (id: string, query: any) => {
+  const { response } = await voxFetch(`/synthesis?speaker=${id}`, presendQuery(query))
+  return response.blob()
+}
+const synthesis_morphing = async (base_speaker: string, target_speaker: string, morph_rate: string, query: any) => {
+  const params = new URLSearchParams({ base_speaker, target_speaker, morph_rate })
+  const { response } = await voxFetch(`/synthesis_morphing?${params}`, presendQuery(query))
+  return response.blob()
 }
 //from https://github.com/VOICEVOX/voicevox/blob/main/src/store/audio.ts
 const xgenerateLab = function* (query: any, offset = 0): Generator<LabLine> {
@@ -152,6 +183,7 @@ export {
   labToQuerys,
   getSpeakers,
   synthesis,
+  synthesis_morphing,
   xgenerateLab,
   generateLab
 }

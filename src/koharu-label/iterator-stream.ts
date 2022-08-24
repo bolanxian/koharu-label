@@ -1,8 +1,8 @@
-
-export class IteratorSource<R>{
+type ForAwait<T> = (Iterable<T> | AsyncIterable<T>) & Partial<Iterable<T> & AsyncIterable<T>>
+export class IterableSource<R> implements UnderlyingSource<R>{
   iterator: Iterator<R> | AsyncIterator<R>
-  constructor(iterator: IteratorSource<R>['iterator']) {
-    this.iterator = iterator
+  constructor(iterable: ForAwait<R>) {
+    this.iterator = iterable[Symbol.asyncIterator]?.() ?? iterable[Symbol.iterator]!()
   }
   async pull(controller: ReadableStreamController<R>) {
     try {
@@ -22,27 +22,44 @@ export class IteratorSource<R>{
 }
 export class ReadableIterator<R>{
   reader: ReturnType<ReadableStream<R>['getReader']>
-  constructor(readable: ReadableStream<R>) {
+  preventCancel: boolean
+  constructor(readable: ReadableStream<R>, options?: StreamPipeOptions) {
+    this.preventCancel = options?.preventCancel ?? false
     this.reader = readable.getReader()
   }
   next(): Promise<IteratorResult<R, void>> { return this.reader.read() as any }
   async return(): Promise<IteratorReturnResult<void>> {
-    await this.reader.cancel()
+    if (!this.preventCancel) { await this.reader.cancel() }
     return { done: true, value: void 0 }
   }
-  [Symbol.asyncIterator](): AsyncIterableIterator<R> { return this }
+  declare [Symbol.asyncIterator]: () => this
 }
-export class IteratorStream<T>{
-  static from<T>(it: IteratorSource<T>['iterator'], strategy?: QueuingStrategy<T>) {
-    return new this(new ReadableStream(new IteratorSource(it), strategy))
+ReadableIterator.prototype[Symbol.asyncIterator] = (async function* () { }).prototype[Symbol.asyncIterator]
+export class IterableStream<T>{
+  static from<T>(iterable: ForAwait<T>, strategy?: QueuingStrategy<T>) {
+    return new this(new ReadableStream(new IterableSource(iterable), strategy))
   }
   readable: ReadableStream<T>
   constructor(readable: ReadableStream<T>) {
     this.readable = readable
   }
-  pipe<R>(gen: (that: this) => Generator<R> | AsyncGenerator<R>, strategy?: QueuingStrategy<R>): IteratorStream<R> {
-    return IteratorStream.from(gen(this), strategy)
+  pipe<R>(gen: (that: this) => Generator<R> | AsyncGenerator<R>, strategy?: QueuingStrategy<R>): IterableStream<R> {
+    return IterableStream.from(gen(this), strategy)
   }
-  [Symbol.asyncIterator]() { return new ReadableIterator(this.readable) }
+  values(options?: StreamPipeOptions) { return new ReadableIterator(this.readable, options) }
+  declare [Symbol.asyncIterator]: this['values']
 }
-export default IteratorStream
+IterableStream.prototype[Symbol.asyncIterator] = IterableStream.prototype.values
+{
+  const { values } = (ReadableStream as any).prototype
+  if (typeof values === 'function') {
+    const source: any = {
+      values(options?: StreamPipeOptions) {
+        return values.call(this.readable, options)
+      }
+    }
+    source[Symbol.asyncIterator] = source.values
+    Object.assign(IterableStream.prototype, source)
+  }
+}
+export default IterableStream

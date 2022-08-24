@@ -1,5 +1,4 @@
 
-import { default as axios, AxiosRequestHeaders, AxiosResponse, AxiosInstance } from "axios"
 import msgpack from "@ygoe/msgpack"
 import { Ndarray, TypedArray } from "./ndarray"
 import * as z from 'zod'
@@ -20,46 +19,53 @@ const zodPyworldAll = zodPyworldDio.extend({
 })
 export type PyworldAll = z.infer<typeof zodPyworldAll>
 const zodAudioInfo = z.object({ format: z.string(), subtype: z.string() })
+export type AudioInfo = z.input<typeof zodAudioInfo>
 const zodAudioPacked = z.object({
   fs: z.number(),
   info: zodAudioInfo,
   data: zodFloat64Array
-}).transform(({ data, fs, info }, ctx): AudioData & { info: z.input<typeof zodAudioInfo> } => {
-  const adata = new AudioData(data, fs)
-  adata.info = info
-  return adata as any
-})
+}).transform((init) => new AudioData<true>(init))
+
 export class PyWorld {
   baseURL: string
-  axios: AxiosInstance
   constructor(baseURL: string) {
-    this.baseURL = baseURL = new URL(baseURL, location.href).href
-    this.axios = axios.create({
-      baseURL,
-      headers: {
-        Accept: 'application/x-msgpack'
-      },
-      responseType: 'arraybuffer',
-      transformRequest: [(data, headers?: AxiosRequestHeaders) => {
-        if (headers && isPlainObject(data)) {
-          headers["Content-Type"] = "application/x-msgpack"
-          data = new Blob([msgpack.encode(data)])
-        }
-        return data
-      }],
-      transformResponse: [(data, headers?: AxiosRequestHeaders) => {
-        if (headers && headers["content-type"] === "application/x-msgpack") {
-          data = msgpack.decode(new Uint8Array(data))
-        }
-        return data
-      }]
-    })
+    this.baseURL = new URL(baseURL, location.href).href
   }
-  debug(resp: AxiosResponse): void {
-    const config = resp.config as any
-    config.responseHeaders = resp.headers
+  async fetch(url: string, requestData?: any, init: RequestInit = {}) {
+    url = new URL(url, this.baseURL).href
+    if (requestData != null) {
+      init.method ??= 'POST'
+      if (isPlainObject(requestData)) {
+        init.headers = new Headers(init.headers)
+        init.headers.set('content-type', "application/x-msgpack")
+        init.body = msgpack.encode(requestData)
+      } else {
+        init.body = requestData
+      }
+    }
+    init.credentials ??= 'include'
+    const request = new Request(url, init)
+    const response = await fetch(request)
+    const { status } = response
+    if (!(status >= 200 && status < 300)) {
+      response.body?.cancel()
+      throw new TypeError('Request failed with status code ' + status)
+    }
+    let data: any
+    if (response.headers.get('content-type') === "application/x-msgpack") {
+      data = await response.arrayBuffer()
+      data = msgpack.decode(new Uint8Array(data))
+    }
+    return { request, response, data }
+  }
+  debug(pair: {
+    request: Request;
+    response: Response;
+    data: any;
+  }) {
+    const config = pair as any
     try {
-      const timing = performance.getEntriesByName(resp.request.responseURL)
+      const timing = performance.getEntriesByName(pair.response.url)
       const lastTiming = timing[timing.length - 1]
       config.$timing = lastTiming
       config.$now = performance.now()
@@ -67,64 +73,64 @@ export class PyWorld {
     (this as any).lastRespConfig = config
   }
   async available(format = ''): Promise<any> {
-    const resp = await this.axios.get('soundfile/available/' + format)
-    return resp.data
+    const { data } = await this.fetch('soundfile/available/' + format)
+    return data
   }
   async encodeAudio(data: TypedArray, fs: number, format: string, subtype: string): Promise<Blob> {
-    const resp = await this.axios.post<Blob>('soundfile/write', {
+    const pair = await this.fetch('soundfile/write', {
       fs, data: Ndarray.pack(data), format, subtype
     }, {
-      responseType: 'blob', headers: { Accept: 'application/octet-stream' }
+      headers: { Accept: 'application/octet-stream' }
     })
-    this.debug(resp)
-    return resp.data
+    this.debug(pair)
+    return pair.response.blob()
   }
   async decodeAudio(blob: Blob) {
-    const resp = await this.axios.post('soundfile/read', blob, {
+    const pair = await this.fetch('soundfile/read', blob, {
       headers: { "Content-Type": 'application/octet-stream' }
     })
-    this.debug(resp)
-    return zodAudioPacked.parse(resp.data)
+    this.debug(pair)
+    return zodAudioPacked.parse(pair.data)
   }
   async dio(data: TypedArray, fs: number): Promise<PyworldDio> {
-    const resp = await this.axios.post('pyworld/dio', {
+    const pair = await this.fetch('pyworld/dio', {
       fs, data: Ndarray.pack(data)
     })
-    this.debug(resp)
-    return zodPyworldDio.parse(resp.data)
+    this.debug(pair)
+    return zodPyworldDio.parse(pair.data)
   }
   async harvest(data: TypedArray, fs: number): Promise<PyworldDio> {
-    const resp = await this.axios.post('pyworld/harvest', {
+    const pair = await this.fetch('pyworld/harvest', {
       fs, data: Ndarray.pack(data)
     })
-    this.debug(resp)
-    return zodPyworldDio.parse(resp.data)
+    this.debug(pair)
+    return zodPyworldDio.parse(pair.data)
   }
   async all(data: TypedArray, fs: number): Promise<PyworldAll> {
-    const resp = await this.axios.post('pyworld/all', {
+    const pair = await this.fetch('pyworld/all', {
       fs, data: Ndarray.pack(data)
     })
-    this.debug(resp)
-    return zodPyworldAll.parse(resp.data)
+    this.debug(pair)
+    return zodPyworldAll.parse(pair.data)
   }
   async synthesize(f0: Float64Array, sp: Ndarray, ap: Ndarray, fs: number): Promise<Float64Array> {
-    const resp = await this.axios.post('pyworld/synthesize', {
+    const pair = await this.fetch('pyworld/synthesize', {
       fs,
       f0: Ndarray.pack(f0),
       sp: Ndarray.pack(sp),
       ap: Ndarray.pack(ap)
     })
-    this.debug(resp)
-    return zodFloat64Array.parse(resp.data)
+    this.debug(pair)
+    return zodFloat64Array.parse(pair.data)
   }
   async savefig(figlist: Ndarray[], log = true): Promise<Blob> {
-    const resp = await this.axios.post<Blob>('pyworld/savefig', {
+    const pair = await this.fetch('pyworld/savefig', {
       figlist: Array.from(figlist, x => Ndarray.pack(x)), log
     }, {
-      responseType: 'blob', headers: { Accept: 'image/png' }
+      headers: { Accept: 'image/png' }
     })
-    this.debug(resp)
-    return resp.data
+    this.debug(pair)
+    return pair.response.blob()
   }
 }
 export interface PyWorld {
@@ -135,7 +141,7 @@ Object.assign(PyWorld.prototype, {
   name: 'PyWorld',
   [Symbol.toStringTag]: 'PyWorld'
 })
-export class AudioData {
+export class AudioData<HasInfo extends boolean = false>{
   static audioContext: AudioContext
   static audioTypes = new Set<string | null>(['wav', 'flac', 'mp3', 'ogg', 'm4a', 'mp4'])
   static play(abuf: AudioBuffer): AudioBufferSourceNode {
@@ -157,18 +163,20 @@ export class AudioData {
     return self
   }
   static fromAudioBuffer(abuf: AudioBuffer): AudioData {
-    const self = new this(abuf.getChannelData(0), abuf.sampleRate)
+    const self = new this({ data: abuf.getChannelData(0), fs: abuf.sampleRate })
     //self.audioBuffer=abuf
     return self
   }
   name: string
-  info?: { format: string, subtype: string }
+  info: HasInfo extends true ? AudioInfo : null
   data: TypedArray
   fs: number
-  constructor(data: TypedArray, fs: number) {
+  constructor(init: { data: TypedArray, fs: number } & (HasInfo extends true ? { info: AudioInfo } : { info?: null })) {
+    const { data, fs, info } = init
     this.name = ''
     this.data = data
     this.fs = fs
+    this.info = info ?? null as any
   }
   getInfo(): string {
     let { info } = this, result = `sampleRate:${this.fs}`

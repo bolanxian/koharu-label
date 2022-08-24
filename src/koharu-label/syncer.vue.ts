@@ -10,7 +10,7 @@ import Awaiter, { AwaiterState } from '../components/awaiter.vue'
 import * as utils from './utils'
 import { PyworldAll, PyWorld, AudioData } from './utils'
 import { Ndarray, TypedArray, TypedArrayConstructor, TypeNdarray } from './ndarray'
-import IteratorStream from './iterator-stream'
+import IterableStream from './iterator-stream'
 import * as vox from './vox'
 const utils2 = {
   *xparseLab(lab: string | string[], cb = (value: any) => { }): Generator<vox.LabLine> {
@@ -127,7 +127,7 @@ const Main = defineComponent({
     return {
       world: sr<PyWorld>(new PyWorld(props.baseURL)),
       f0File: sr<File | null>(null),
-      audio: sr<File | AudioData | null>(null),
+      audio: sr<File | AudioData<true> | null>(null),
       worldResult: sr<PyworldAll | null>(null)
     }
   },
@@ -331,12 +331,18 @@ Object.assign(Main.methods as any, {
       minVowelLength: +minVowelLength, maxVowelLength: +maxVowelLength, pitch: +pitch
     })
     const dev = import.meta.env.DEV
-    const stream = IteratorStream.from(querys.entries()).pipe(async function* (it) {
+    const stream = IterableStream.from(querys.entries()).pipe(async function* (it) {
+      const isMorphing = id.indexOf(':') > 0
+      let synthesis = vox.synthesis
+      if (isMorphing) {
+        let [a, b, c] = id.split(/\s*:\s*/)
+        synthesis = (id: string, query: any) => vox.synthesis_morphing(a, b, c, query)
+      }
       for await (const [i, query] of it) {
         const msg = `${T('开始 VOICEVOX 合成')} (${i + 1}/${querys.length})`
         vm.log(msg)
         dev && console.log(`${msg} start`)
-        const file = await vox.synthesis(id, query)
+        const file = await synthesis(id, query)
         dev && console.log(`${msg} end`)
         yield { i, query, file }
       }
@@ -357,9 +363,10 @@ Object.assign(Main.methods as any, {
     }
 
     vm.log(T('开始 WORLD 分析'))
-    const audio = new AudioData(new Ctor(await new Blob(datas).arrayBuffer()), lastFs)
+    const audio = new AudioData<true>({
+      data: new Ctor(await new Blob(datas).arrayBuffer()), fs: lastFs, info: lastInfo
+    })
     audio.name = f0File.name.replace(/\.f0$/, `(${promptValue}).wav`)
-    audio.info = lastInfo
     const result = await world.all(audio.data, audio.fs)
 
     vm.lab0 = lab0//.map(l=>l.join(' ')).join('\n')

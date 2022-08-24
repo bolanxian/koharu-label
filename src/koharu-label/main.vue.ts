@@ -38,7 +38,7 @@ export default defineComponent({
       world: sr<PyWorld>(new PyWorld(props.baseURL)),
       handle: sr<FileSystemDirectoryHandle | null>(null),
       labFile: sr<File | null>(null),
-      audio: sr<File | AudioData | null>(null),
+      audio: sr<File | AudioData<true> | null>(null),
       worldResult: sr<PyworldDio | null>(null),
       inst: sr<SvpFile | null>(null)
     }

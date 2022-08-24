@@ -1,7 +1,6 @@
 
 import * as Vue from "vue"
 import * as iview from "view-ui-plus"
-import axios from 'axios'
 import msgpack from '@ygoe/msgpack'
 import * as z from 'zod'
 import App from './components/app.vue'
@@ -18,7 +17,7 @@ const app = Vue.createApp(App, {
 })
 const vm = app.mount('#app')
 const exports = {
-  Vue, iview, axios, msgpack, z, app, vm
+  Vue, iview, msgpack, z, app, vm
 }
 export default exports
 Object.assign(window, exports)
