@@ -43,7 +43,7 @@ export class IterableStream<T>{
   constructor(readable: ReadableStream<T>) {
     this.readable = readable
   }
-  pipe<R>(gen: (that: this) => Generator<R> | AsyncGenerator<R>, strategy?: QueuingStrategy<R>): IterableStream<R> {
+  pipe<R>(gen: (that: this) => ForAwait<R>, strategy?: QueuingStrategy<R>): IterableStream<R> {
     return IterableStream.from(gen(this), strategy)
   }
   values(options?: StreamPipeOptions) { return new ReadableIterator(this.readable, options) }

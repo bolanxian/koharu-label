@@ -58,7 +58,7 @@ export default defineComponent({
     handleDragover(e: DragEvent | ClipboardEvent) {
       e.preventDefault(); e.stopPropagation()
     },
-    handleDrop(e: DragEvent | ClipboardEvent) {
+    handleDrop(e: (DragEvent | ClipboardEvent) & Partial<DragEvent & ClipboardEvent>) {
       const target = e.target as HTMLElement
       if (this.global && !this.$el.contains(target) && e.type !== 'paste') {
         const tag = target.tagName.toUpperCase()
@@ -66,7 +66,7 @@ export default defineComponent({
         if ('INPUT' === tag || 'TEXTAREA' === tag || '' === able || 'true' === able) return
       }
       e.preventDefault(); e.stopPropagation()
-      const dT = 'dataTransfer' in e ? e.dataTransfer : e.clipboardData
+      const dT = e.dataTransfer ?? e.clipboardData
       if (dT == null) return
       const { files } = dT
       if (files.length === 0) return

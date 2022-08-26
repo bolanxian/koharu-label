@@ -8,8 +8,8 @@ const { Row, Col, Affix, Card, Icon, Input, Button, ButtonGroup, Checkbox } = iv
 import DropFile from '../components/drop-file.vue'
 import Awaiter from "../components/awaiter.vue"
 import hiragana2ChinesePronounce from './hiragana2chinese-pronounce'
-import { romaji, utils, types } from './utils'
-const { toHiragana, toKatakana, download } = utils
+import * as utils from './utils'
+const { romaji, toHiragana, toKatakana, download, types } = utils
 import * as pinyin from './pinyin'
 
 import pinyin_dict_withtone_raw from 'ipinyinjs/dict/pinyin_dict_withtone?raw'
@@ -48,16 +48,16 @@ export default defineComponent({
   },
   setup(props, ctx) {
     return {
-      inst: sr<InstanceType<typeof types[keyof typeof types]> | null>(null)
+      inst: sr<utils.InstTypes | null>(null)
     }
   },
   mounted() {
     this.$emit('mount:app', this)
   },
   methods: {
-    async loadFile(type: typeof types[keyof typeof types], file: File) {
+    async loadFile(type: utils.CtorTypes, file: File) {
       try {
-        const inst = await type.loadAsFile<typeof type>(this.file = file)
+        const inst = await type.loadAsFile(this.file = file)
         this.inst = inst
         const lyrics = inst.getLyrics()
         this.length = `[${lyrics.length}]`
@@ -71,7 +71,7 @@ export default defineComponent({
     handleChange(files: File[]) {
       for (const file of files) {
         const m = file.name.match(/\.([^.]+)$/)
-        const type = m != null ? types[m[1] as keyof typeof types] : null
+        const type = m != null ? types[m[1] as keyof utils.Types] : null
         if (type != null) {
           return this.loadFile(type, file)
         }

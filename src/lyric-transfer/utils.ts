@@ -3,7 +3,7 @@ import table from './table'
 const { fromCharCode } = String
 const { charCodeAt, replace } = String.prototype
 type ReplacerList = [RegExp, string | ((substring: string, ...args: any[]) => string)][]
-const replacer = (list: ReplacerList) => {
+export const replacer = (list: ReplacerList) => {
   const fn = (str: string) => {
     for (const a of fn.map) {
       str = replace.call(str, a[0], a[1] as any)
@@ -13,7 +13,7 @@ const replacer = (list: ReplacerList) => {
   fn.map = new Map(list)
   return fn
 }
-const replacerShort = (list: ReplacerList) => {
+export const replacerShort = (list: ReplacerList) => {
   const fn = (str: string) => {
     for (const a of fn.map) {
       const s = replace.call(str, a[0], a[1] as any)
@@ -48,34 +48,38 @@ const createCharCodeOffset = (reg: RegExp, i: number) => {
   const cb = (m: string) => fromCharCode(charCodeAt.call(m, 0) + i)
   return replacer([[reg, cb]])
 }
-export const utils = {
-  replacer,
-  replacerShort,
-  toHiragana: createCharCodeOffset(/[\u30a1-\u30f6]/g, -0x60),//カタカナをひらがなに変換する関数
-  toKatakana: createCharCodeOffset(/[\u3041-\u3096]/g, 0x60),//ひらがなをカタカナに変換する関数
-  download(sequence: string | BlobPart[] | Blob, filename = ''): void {
-    const a = document.createElement('a')
-    a.download = filename
-    if (typeof sequence === 'string') {
-      a.href = sequence
-    } else {
-      const blob = (sequence instanceof Blob) ? sequence : new Blob(sequence)
-      const src = a.href = URL.createObjectURL(blob)
-      setTimeout(() => { URL.revokeObjectURL(src) }, 60000)
-    }
-    a.click()
+
+export const toHiragana = createCharCodeOffset(/[\u30a1-\u30f6]/g, -0x60)//カタカナをひらがなに変換する関数
+export const toKatakana = createCharCodeOffset(/[\u3041-\u3096]/g, 0x60)//ひらがなをカタカナに変換する関数
+export const download = (sequence: string | BlobPart[] | Blob, filename = '') => {
+  const a = document.createElement('a')
+  a.download = filename
+  if (typeof sequence === 'string') {
+    a.href = sequence
+  } else {
+    const blob = (sequence instanceof Blob) ? sequence : new Blob(sequence)
+    const src = a.href = URL.createObjectURL(blob)
+    setTimeout(() => { URL.revokeObjectURL(src) }, 60000)
   }
+  a.click()
 }
-abstract class TypeAsText {
-  static async loadAsFile<T extends typeof TypeAsText>(file: Blob): Promise<InstanceType<T>> {
+
+export abstract class TypeAsText {
+  static async loadAsFile<T extends typeof TypeAsText>(this: T, file: Blob) {
     return new (this as any)(await file.text()) as InstanceType<T>
   }
   text: string
-  abstract reset(): void
+  abstract data: any
   constructor(text: string) {
     this.text = text
     this.reset()
   }
+  abstract reset(): void
+  abstract [Symbol.iterator](): IterableIterator<any>
+  abstract getLyrics(): string[]
+  abstract setLyrics(_it: Iterable<string>): void
+  abstract setPhonemes(_it: Iterable<string>): void
+  abstract export(): string
 }
 abstract class XML extends TypeAsText {
   static parser = new DOMParser()
@@ -100,7 +104,7 @@ abstract class XML extends TypeAsText {
     return null
   }
   declare data: Document
-  abstract [Symbol.iterator](): Generator<Element>
+  abstract [Symbol.iterator](): IterableIterator<Element>
   reset() {
     return this.data = XML.parse(this.text)
   }
@@ -174,3 +178,6 @@ export const types = {
     }
   }
 }
+export type Types = typeof types
+export type CtorTypes = Types[keyof Types]
+export type InstTypes = InstanceType<CtorTypes>
