@@ -11,8 +11,8 @@ function* xparseLab(lab: string | string[]): Generator<LabLine> {
   for (const line of typeof lab === 'string' ? lab.split(/\r?\n/) : lab) {
     const m = line.match(reg)
     if (!m) { continue }
-    let [_, off, off2, lrc] = m
-    yield [+off, +off2, lrc]
+    let [_, a, b, lrc] = m
+    yield [+a, +b, lrc]
   }
 }
 function* data_flag(x: Lab): Generator<number> {
@@ -179,6 +179,7 @@ const generateLab = (query: any, offset = 0): string => {
   return lab
 }
 export {
+  xparseLab,
   margeLab,
   labToQuerys,
   getSpeakers,

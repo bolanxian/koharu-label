@@ -5,9 +5,10 @@ import * as path from 'path'
 export default defineConfig({
   base: './',
   build: {
-    minify: false,
     target: 'esnext',
-    cssCodeSplit: false
+    polyfillModulePreload: false,
+    cssCodeSplit: false,
+    minify: false
   },
   plugins: [vue(), splitVendorChunkPlugin()]
 })

@@ -12,9 +12,10 @@ export type TypedArrayValue<T extends Types = Types> = TypedArray<T>[number]
 export const TypedArray = Object.getPrototypeOf(Uint8Array) as TypedArrayConstructor
 const typedArray = TypedArray.prototype
 
-type _TypeNdarray<N extends number, T extends TypedArray, A extends N[], K>
-  = A['length'] extends N ? K : _TypeNdarray<N, T, [...A, N], Ndarray<T> & Array<K>>
-export type TypeNdarray<N extends number, T extends Types = Types> = _TypeNdarray<N, TypedArray<T>, [N], TypedArray<T>>
+type __TypeNdarray<N extends number, T extends TypedArray, A extends unknown[], K>
+  = A['length'] extends N ? K : __TypeNdarray<N, T, [...A, N], Ndarray<T> & Array<K> & { shape: [...A, A[0]] }>
+type _TypeNdarray<N extends number, T extends TypedArray = TypedArray> = __TypeNdarray<N, T, [number], T>
+export type TypeNdarray<N extends number, T extends Types = Types> = _TypeNdarray<N, TypedArray<T>>
 export const zodDType = z.enum(Object.keys(types) as [Types])
 export const zodTypedArray = z.instanceof(TypedArray)
 const zodNdarrayInput = z.object({
@@ -75,6 +76,10 @@ export class Ndarray<T extends TypedArray = TypedArray> extends Array<unknown>{
       return this._subarray(buffer, offset, offset + shape[0])
     }
   }
+  static create<T extends TypedArrayConstructor, A extends number[]>(value: T, shape: [...A], offset?: number): _TypeNdarray<A['length'], InstanceType<T>>
+  static create<T extends TypedArray, A extends number[]>(value: T, shape: [...A], offset?: number): _TypeNdarray<A['length'], T>
+  static create<T extends Types, A extends number[]>(value: T, shape: [...A], offset?: number): TypeNdarray<A['length'], T>
+  static create(value: TypedArray | TypedArrayConstructor | Types, shape: string | number | number[], offset?: number): TypedArray | Ndarray
   static create(value: TypedArray | TypedArrayConstructor | Types, shape: string | number | number[], offset = 0): TypedArray | Ndarray {
     if (typeof shape === 'string') {
       shape = shape.split(',').map(Number)

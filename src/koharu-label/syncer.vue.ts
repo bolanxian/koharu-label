@@ -13,28 +13,17 @@ import { Ndarray, TypedArray, TypedArrayConstructor, TypeNdarray } from './ndarr
 import IterableStream from './iterator-stream'
 import * as vox from './vox'
 const utils2 = {
-  *xparseLab(lab: string | string[], cb = (value: any) => { }): Generator<vox.LabLine> {
-    const reg = /^\s*(\S+)\s+(\S+)\s+([\S\s]*?)\s*$/
-    for (let line of typeof lab === 'string' ? lab.split(/\r?\n/) : lab) {
-      line = line.trim()
-      if (!line) { continue }
-      if (line[0] === '#') {
-        cb(line[0].slice(1))
-        continue
-      }
-      const m = line.match(reg)
-      if (m) {
-        const [_, a, b, c] = m
-        yield [+a / 10000, +b / 10000, c]
-      }
+  *xparseLab(lab: string | string[]): Generator<vox.LabLine> {
+    for (const [a, b, lrc] of vox.xparseLab(lab)) {
+      yield [a / 10000, b / 10000, lrc]
     }
   },
   labelSync(
     lab0: string, lab1: string, f0: Float64Array, sp: Float64Array[], ap: Float64Array[], fs: number
   ): [Float64Array, TypeNdarray<2, 'float64'>, TypeNdarray<2, 'float64'>, number] {
-    const shape = [f0.length, sp[0].length]
-    const _sp = Ndarray.create('float64', shape) as TypeNdarray<2, 'float64'>
-    const _ap = Ndarray.create('float64', shape) as TypeNdarray<2, 'float64'>
+    const shape: [number, number] = [f0.length, sp[0].length]
+    const _sp = Ndarray.create('float64', shape)
+    const _ap = Ndarray.create('float64', shape)
     _ap.buffer.fill(1 - 1e-16)
     const it = utils2.xparseLab(lab1), { trunc } = Math
     for (const [begin0, end0/*,lrc0*/] of utils2.xparseLab(lab0)) {
@@ -72,15 +61,15 @@ const utils2 = {
 }
 const createProcesser = <
   T extends { process: string | null, output: Promise<string | null> | null }, A extends unknown[] = []
->(name: string, cb: (this: T, ...args: [...A]) => Promise<Blob | null | undefined>) => {
+>(name: string, cb: (this: T, ...args: [...A]) => Promise<Blob | Function | undefined>) => {
   return async function (this: T, ...args: [...A]) {
     if (this.process != null) { return }
     this.process = name
     try {
       const promise = this.output = cb.apply(this, args).then((data): string | null => {
         if (data instanceof Blob) { return URL.createObjectURL(data) }
-        if (data === void 0) { this.output = null }
-        return null
+        if (typeof data === 'function') { setTimeout(data); return null }
+        return this.output = null
       })
       await promise
     } catch (e) {
@@ -175,16 +164,18 @@ const Main = defineComponent({
       }
       if (this.useSavefig) try {
         const { world, worldResult: audio, imgs } = this
-        if (!audio) { return }
-        for (const img of imgs.splice(0, imgs.length)) {
+        if (audio == null) { return }
+        for (const img of imgs) {
           URL.revokeObjectURL(img)
         }
-        for (const args of [
+        imgs.length = 0
+        const argss = [
           [[audio.f0]],
           [[audio.sp]],
           [[audio.ap], false]
-        ] as [Ndarray[], boolean][]) {
-          imgs.push(URL.createObjectURL(await world.savefig(...args)))
+        ] as [Ndarray[], boolean][]
+        for (let i = 0; i < argss.length; i++) {
+          imgs[i] = URL.createObjectURL(await world.savefig(...argss[i]))
         }
       } catch (e) {
         console.warn(e)
@@ -292,7 +283,7 @@ Object.assign(Main.methods as any, {
   handleSynthesize: createProcesser('', async function (this: Main) {
     const vm = this, { world, f0File, audio, worldResult, lab0, lab1 } = vm
     if (!(audio instanceof AudioData && worldResult != null)) {
-      setTimeout(vm.handleSynthesizeVox); return null
+      return vm.handleSynthesizeVox
     }
     const { fs, info } = audio, { sp, ap } = worldResult
     if (info == null || f0File == null) { return }
@@ -331,14 +322,14 @@ Object.assign(Main.methods as any, {
       minVowelLength: +minVowelLength, maxVowelLength: +maxVowelLength, pitch: +pitch
     })
     const dev = import.meta.env.DEV
-    const stream = IterableStream.from(querys.entries()).pipe(async function* (it) {
+    let stream = IterableStream.from(querys.entries()).pipe(async function* (stream) {
       const isMorphing = id.indexOf(':') > 0
       let synthesis = vox.synthesis
       if (isMorphing) {
         let [a, b, c] = id.split(/\s*:\s*/)
         synthesis = (id: string, query: any) => vox.synthesis_morphing(a, b, c, query)
       }
-      for await (const [i, query] of it) {
+      for await (const [i, query] of stream) {
         const msg = `${T('开始 VOICEVOX 合成')} (${i + 1}/${querys.length})`
         vm.log(msg)
         dev && console.log(`${msg} start`)
@@ -346,35 +337,39 @@ Object.assign(Main.methods as any, {
         dev && console.log(`${msg} end`)
         yield { i, query, file }
       }
+    }).pipe(async function* (stream) {
+      let offset = 0, lab1 = '', reg = /([^\n]+\n)$/
+      for await (const { i, query, file } of stream) {
+        const msg = `decodeAudio (${i + 1}/${querys.length})`
+        dev && console.log(`${msg} start`)
+        var { fs, info, data } = await world.decodeAudio(file)
+        dev && console.log(`${msg} end`)
+        lab1 += vox.generateLab(query, offset).replace(reg, '#$1')
+        offset += (data.length / fs) * 10000000
+        yield new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
+      }
+      init = {
+        offset, lab1,
+        Ctor: data.constructor as any, info, fs
+      }
     })
-    let offset = 0, lab1 = '', datas = []
-    let Ctor: TypedArrayConstructor = Float64Array, lastInfo = { format: '', subtype: '' }, lastFs = 24000
-    for await (const { i, query, file } of stream) {
-      const msg = `decodeAudio (${i + 1}/${querys.length})`
-      dev && console.log(`${msg} start`)
-      const { fs, info, data } = await world.decodeAudio(file)
-      dev && console.log(`${msg} end`)
-      lab1 += vox.generateLab(query, offset).replace(/([^\n]+\n)$/, '#$1')
-      offset += (data.length / fs) * 10000000
-      datas.push(data)
-      Ctor = data.constructor as TypedArrayConstructor
-      lastInfo = info
-      lastFs = fs
+    let init: {
+      offset: number, lab1: string,
+      Ctor: TypedArrayConstructor, info: utils.AudioInfo, fs: number
     }
-
+    const audioBuffer = await new Response(stream.readable).arrayBuffer()
     vm.log(T('开始 WORLD 分析'))
     const audio = new AudioData<true>({
-      data: new Ctor(await new Blob(datas).arrayBuffer()), fs: lastFs, info: lastInfo
+      data: new init!.Ctor(audioBuffer), fs: init!.fs, info: init!.info
     })
     audio.name = f0File.name.replace(/\.f0$/, `(${promptValue}).wav`)
     const result = await world.all(audio.data, audio.fs)
 
     vm.lab0 = lab0//.map(l=>l.join(' ')).join('\n')
-    vm.lab1 = lab1.replace(/#([^\n]+\n)$/, '$1')
+    vm.lab1 = init!.lab1.replace(/#([^\n]+\n)$/, '$1')
     vm.audio = audio
     vm.worldResult = result
     vm.log()
-    setTimeout(vm.handleSynthesize)
-    return null
+    return vm.handleSynthesize
   })
 })
