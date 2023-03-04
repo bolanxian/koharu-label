@@ -1,12 +1,19 @@
-import { isPlainObject } from "./utils"
 
-const baseURL = 'http://127.0.0.1:50021/'
+import { isPlainObject } from "./utils"
 const { padStart } = String.prototype, { trunc } = Math
+
+let baseURL = ''
+export const getBaseURL = () => baseURL
+export const setBaseURL = (url: number | string = 50021) => {
+  if (typeof url === 'number') { url = `http://127.0.0.1:${url}/` }
+  baseURL = url
+}
+setBaseURL()
 const vowels = 'pau,sil,cl,a,i,u,e,o,N'.split(',')
 const consonants = 'k,ky,g,gy,s,sh,z,t,ts,ty,ch,d,dy,n,ny,h,hy,b,by,f,p,py,m,my,y,r,ry,v,w,j'.split(',')
 export type LabLine = [number, number, string]
 export type Lab = LabLine[]
-function* xparseLab(lab: string | string[]): Generator<LabLine> {
+export function* xparseLab(lab: string | string[]): Generator<LabLine> {
   const reg = /^\s*(\d+)\s+(\d+)\s+([\S\s]*?)\s*$/
   for (const line of typeof lab === 'string' ? lab.split(/\r?\n/) : lab) {
     const m = line.match(reg)
@@ -24,7 +31,7 @@ function* data_flag(x: Lab): Generator<number> {
   }
   yield j
 }
-const margeLab = (_lab: string | string[]): Lab => {
+export const margeLab = (_lab: string | string[]): Lab => {
   const lab = Array.from(xparseLab(_lab))
   const flags = Array.from(data_flag(lab))
   const newLab: Lab = []
@@ -39,7 +46,7 @@ const margeLab = (_lab: string | string[]): Lab => {
   }
   return newLab
 }
-const labToQuerys = (_lab: string | Lab, {
+export const labToQuerys = (_lab: string | Lab, {
   minVowelLength = 0.05, maxVowelLength = 0.15, pitch = 5.8
 } = {}) => {
   const { min, max } = Math
@@ -104,12 +111,21 @@ const voxFetch = async (url: string, requestData?: any, init: RequestInit = {}) 
   const response = await fetch(request)
   const { status } = response
   if (!(status >= 200 && status < 300)) {
-    response.body?.cancel()
     throw new TypeError(`Request failed with status code ${status}`)
   }
   return { request, response }
 }
-const getSpeakers = async () => {
+export const getInfo = async () => {
+  const version: string = await (await voxFetch('/version')).response.json()
+  const data = await (await voxFetch('/engine_manifest')).response.json()
+  return {
+    name: data.name,
+    brand_name: data.brand_name,
+    icon: 'data:image/png;base64,' + data.icon,
+    version
+  }
+}
+export const getSpeakers = async () => {
   const { response } = await voxFetch('/speakers')
   const data = await response.json()
   let str = ''
@@ -136,17 +152,17 @@ const presendQuery = (_query: any) => {
   })
   return query
 }
-const synthesis = async (id: string, query: any) => {
+export const synthesis = async (id: string, query: any) => {
   const { response } = await voxFetch(`/synthesis?speaker=${id}`, presendQuery(query))
   return response.blob()
 }
-const synthesis_morphing = async (base_speaker: string, target_speaker: string, morph_rate: string, query: any) => {
+export const synthesis_morphing = async (base_speaker: string, target_speaker: string, morph_rate: string, query: any) => {
   const params = new URLSearchParams({ base_speaker, target_speaker, morph_rate })
   const { response } = await voxFetch(`/synthesis_morphing?${params}`, presendQuery(query))
   return response.blob()
 }
 //from https://github.com/VOICEVOX/voicevox/blob/main/src/store/audio.ts
-const xgenerateLab = function* (query: any, offset = 0): Generator<LabLine> {
+export const xgenerateLab = function* (query: any, offset = 0): Generator<LabLine> {
   if (query == null) { return }
   const { speedScale } = query, rate = 10000000
   const x = (time: number, lrc: string = 'pau'): LabLine => {
@@ -171,20 +187,10 @@ const xgenerateLab = function* (query: any, offset = 0): Generator<LabLine> {
   }
   yield x(query.postPhonemeLength)
 }
-const generateLab = (query: any, offset = 0): string => {
-  let lab = ""
+export const generateLab = (query: any, offset = 0): string => {
+  let lab = ''
   for (const line of xgenerateLab(query, offset)) {
     lab += line.join(' ') + '\n'
   }
   return lab
-}
-export {
-  xparseLab,
-  margeLab,
-  labToQuerys,
-  getSpeakers,
-  synthesis,
-  synthesis_morphing,
-  xgenerateLab,
-  generateLab
 }

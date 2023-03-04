@@ -4,7 +4,7 @@
 import * as Vue from "vue"
 const { defineComponent, createVNode: h, ref, shallowRef: sr } = Vue
 import * as iview from "view-ui-plus"
-const { Row, Col, Card, Icon, Input, Button, ButtonGroup } = iview
+const { Row, Col, Card, Icon, Input, Button, ButtonGroup, Divider } = iview
 import DropFile from '../components/drop-file.vue'
 import Awaiter, { AwaiterState } from '../components/awaiter.vue'
 import * as utils from './utils'
@@ -90,9 +90,14 @@ const T = utils.multiLocale({
     '开始 WORLD 合成': 'start WORLD synthesis',
     '连接 VOICEVOX ENGINE 失败': 'connect VOICEVOX ENGINE failed',
     '开始 WORLD 分析': 'start WORLD analysis',
-    '输入　角色ID，最小元音长度，最大元音长度，音高：\n': 'Input speaker id,min vowel length,max vowel length,pitch:\n'
+    '输入　角色ID，最小元音长度，最大元音长度，音高：': 'Input speaker id,min vowel length,max vowel length,pitch:\n'
   },
 })
+const getVoicevoxInfo = async () => {
+  const info = await vox.getInfo()
+  const speakers = await vox.getSpeakers()
+  return { ...info, speakers }
+}
 const Main = defineComponent({
   name: 'Koharu Label Syncer',
   props: {
@@ -100,6 +105,7 @@ const Main = defineComponent({
   },
   data() {
     return {
+      voicevoxInfo: getVoicevoxInfo(),
       process: null as string | null,
       output: null as Promise<string | null> | null,
       imgs: [] as string[],
@@ -131,6 +137,13 @@ const Main = defineComponent({
     }
   },
   methods: {
+    getVoicevoxInfo() { this.voicevoxInfo = getVoicevoxInfo() },
+    setVoicevoxBaseURL() {
+      let url = prompt('VOICEVOX Engine URL:', vox.getBaseURL())
+      if (url == null) { return }
+      vox.setBaseURL(url === '' ? void 0 : url)
+      this.getVoicevoxInfo()
+    },
     async handleChange(files: File[]) {
       const { audioTypes } = AudioData
       let lab, f0, audio
@@ -256,6 +269,27 @@ const Main = defineComponent({
             ]
           })
         }),
+        h(Awaiter, {
+          promise: vm.voicevoxInfo,
+        }, (state: AwaiterState, info: Awaited<typeof vm["voicevoxInfo"]>) => {
+          const fulfilled = state === 'fulfilled', rejected = state === 'rejected'
+          const loading = state === 'pending', empty = state === 'empty'
+          return h(Card, {}, {
+            title: () => [
+              h('p', {}, [h('span', {}, [fulfilled ? info.name : 'VOICEVOX'])]),
+              fulfilled ? h('div', { class: 'ivu-cell-label' }, info.brand_name) : null,
+              fulfilled ? h('div', { class: 'ivu-cell-label' }, `版本：${info.version}`) : null
+            ],
+            extra: () => h(ButtonGroup, {}, () => [
+              h(Button, { loading, onClick: vm.setVoicevoxBaseURL }, () => 'URL'),
+              h(Button, { loading, onClick: vm.getVoicevoxInfo }, () => '刷新')
+            ]),
+            default: () => [
+              fulfilled ? h('pre', { innerText: info.speakers }) : null,
+              rejected ? T('连接 VOICEVOX ENGINE 失败') : null
+            ]
+          })
+        }),
         Array.from(vm.imgs, src => h('img', { src }))
       ]),
       h(Col, { xs: 12, lg: 6 }, () => [
@@ -305,13 +339,7 @@ Object.assign(Main.methods as any, {
     let { promptValue } = vm
     if (f0File == null) { return }
     vm.log()
-    try {
-      let speakers = await vox.getSpeakers()
-      var msg = T('输入　角色ID，最小元音长度，最大元音长度，音高：\n') + speakers
-    } catch (e) {
-      iview.Message.error(T('连接 VOICEVOX ENGINE 失败'))
-      return
-    }
+    const msg = T('输入　角色ID，最小元音长度，最大元音长度，音高：')
     if (promptValue == null) { promptValue = '8,0.05,0.15,5.8' }
     promptValue = prompt(msg, promptValue)
     if (promptValue == null) { return }
@@ -339,10 +367,11 @@ Object.assign(Main.methods as any, {
       }
     }).pipe(async function* (stream) {
       let offset = 0, lab1 = '', reg = /([^\n]+\n)$/
+      let fs: number, info: utils.AudioInfo, data: TypedArray
       for await (const { i, query, file } of stream) {
         const msg = `decodeAudio (${i + 1}/${querys.length})`
         dev && console.log(`${msg} start`)
-        var { fs, info, data } = await world.decodeAudio(file)
+        !({ fs, info, data } = await world.decodeAudio(file))
         dev && console.log(`${msg} end`)
         lab1 += vox.generateLab(query, offset).replace(reg, '#$1')
         offset += (data.length / fs) * 10000000
@@ -350,7 +379,7 @@ Object.assign(Main.methods as any, {
       }
       init = {
         offset, lab1,
-        Ctor: data.constructor as any, info, fs
+        Ctor: data!.constructor as any, info: info!, fs: fs!
       }
     })
     let init: {

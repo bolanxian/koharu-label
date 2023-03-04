@@ -4,15 +4,15 @@
 import * as Vue from "vue"
 const { defineComponent, createVNode: h, ref, shallowRef: sr } = Vue
 import * as iview from "view-ui-plus"
-const { Row, Col, Card, Icon, Input, Button, ButtonGroup, Checkbox } = iview
-import { marked } from 'marked'
+const { Row, Col, Card, Icon, Input, Button, ButtonGroup, Radio, RadioGroup, Checkbox } = iview
+import readme from '../assets/readme.md?markdown'
+import { romaji } from '../lyric-transfer/utils'
 import DropFile from '../components/drop-file.vue'
 import HelloWorld from '../components/hello-world.vue'
 import * as utils from './utils'
 import { PyworldDio, PyWorld, AudioData } from './utils'
 import SvpFile from './svp-file'
-import readme from '../assets/readme.md?raw'
-const info = marked.parse(readme).replace(/\<a ([^>]*)\>/g, '<a target="_blank" $1>')
+
 export default defineComponent({
   name: "Koharu Label",
   props: {
@@ -22,7 +22,7 @@ export default defineComponent({
     return {
       bpm: '120',
       basePitch: '60',
-      margeConsonant: false,
+      phonemesRadio: 'null',
       refinePitch: false,
       useHarvest: false,
       envelope: false
@@ -76,7 +76,7 @@ export default defineComponent({
       } catch (e) {
         if (!(e instanceof Error)) { throw e }
         if (e.name === 'AbortError') {
-          iview.Message.warning('选择了取消')
+          iview.Message.warning('已取消')
           this.handle = null
         } else { throw e }
       }
@@ -172,7 +172,7 @@ export default defineComponent({
       this.saveFile(sequence, audioName + '.f0')
     },
     async exportSvp() {
-      const vm = this, { labFile, audio, audioName, worldResult } = vm
+      const vm = this, { labFile, audio, audioName, worldResult, phonemesRadio } = vm
       const inst = vm.inst = new SvpFile(+vm.bpm)
       inst.basePitch = +vm.basePitch
       if (worldResult != null) {
@@ -191,7 +191,17 @@ export default defineComponent({
           inst.notes.push(SvpFile.createNote(i, dur, 'a', inst.basePitch))
         }
       }
-      if (vm.margeConsonant) { inst.margeConsonantNote() }
+      if (phonemesRadio !== 'null') {
+        inst.margeConsonantNote()
+        if (phonemesRadio !== 'marge') {
+          let fn: (a: string) => string = String
+          if (phonemesRadio === 'hiragana') { fn = romaji.toHiragana }
+          else if (phonemesRadio === 'katakana') { fn = romaji.toKatakana }
+          for (const note of inst.notes) {
+            note.lyrics = fn(note.lyrics)
+          }
+        }
+      }
       if (vm.refinePitch) { inst.refinePitch() }
       if (vm.envelope && audio instanceof AudioData) {
         const { data, fs } = audio
@@ -260,11 +270,7 @@ export default defineComponent({
               modelValue: vm.bpm,
               'onUpdate:modelValue'(bpm: string) { vm.bpm = bpm }
             }, {
-              prepend: () => h('span', {}, 'BPM:'),
-              append: () => h(Checkbox, {
-                modelValue: vm.margeConsonant,
-                'onUpdate:modelValue'(value: boolean) { vm.margeConsonant = value }
-              }, () => '合并辅音')
+              prepend: () => h('span', {}, 'BPM:')
             }),
             h(Input, {
               modelValue: vm.basePitch,
@@ -275,12 +281,22 @@ export default defineComponent({
                 modelValue: vm.refinePitch,
                 'onUpdate:modelValue'(value: boolean) { vm.refinePitch = value }
               }, () => '细化音高')
-            })
+            }),
+            h(RadioGroup, {
+              type: 'button',
+              modelValue: vm.phonemesRadio,
+              'onUpdate:modelValue'(value: string) { vm.phonemesRadio = value }
+            }, () => [
+              h(Radio, { label: 'null' }, () => '不转换'),
+              h(Radio, { label: 'marge' }, () => '合并辅音'),
+              h(Radio, { label: 'hiragana' }, () => '平假名'),
+              h(Radio, { label: 'katakana' }, () => '片假名')
+            ])
           ]
         })
       ]),
       h(Col, { xs: 24, lg: 12 }, () => [
-        h(Card, {}, () => h("div", { innerHTML: info })),
+        h(Card, {}, () => h("div", { innerHTML: readme })),
         import.meta.env.DEV ? h(HelloWorld) : null
       ])
     ])
