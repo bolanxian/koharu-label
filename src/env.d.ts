@@ -6,8 +6,15 @@ declare module '*.vue' {
   const component: DefineComponent<{}, {}, any>
   export default component
 }
-declare module 'ipinyinjs/dict/pinyin_dict_withtone' { }
-declare module 'ipinyinjs/pinyinUtil' { }
+declare module '*?markdown' {
+  const html: string
+  export default html
+}
+declare module 'ipinyinjs/pinyinUtil' {
+  export default {
+    getPinyin(chinese: string, splitter: string, withtone: boolean, polyphone: boolean): string
+  }
+}
 interface Window {
   showDirectoryPicker(opts?: any): Promise<FileSystemDirectoryHandle>
 }
@@ -21,4 +28,10 @@ interface FileSystemWritableFileStream extends WritableStream {
   seek(): Promise<void>
   truncate(): Promise<void>
   write(data: BlobPart): Promise<void>
+}
+interface ImportMetaEnv {
+
+}
+interface ImportMeta {
+  readonly env: ImportMetaEnv
 }

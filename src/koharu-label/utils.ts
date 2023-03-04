@@ -23,7 +23,7 @@ export type AudioInfo = z.input<typeof zodAudioInfo>
 const zodAudioPacked = z.object({
   fs: z.number(),
   info: zodAudioInfo,
-  data: zodFloat64Array
+  data: z.union([zodFloat64Array, zodFloat64Array2d.transform(data => data[0])])
 }).transform((init) => new AudioData<true>(init))
 
 export class PyWorld {
@@ -48,7 +48,6 @@ export class PyWorld {
     const response = await fetch(request)
     const { status } = response
     if (!(status >= 200 && status < 300)) {
-      response.body?.cancel()
       throw new TypeError('Request failed with status code ' + status)
     }
     let data: any

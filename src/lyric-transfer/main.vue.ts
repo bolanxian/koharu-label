@@ -12,27 +12,27 @@ import * as utils from './utils'
 const { romaji, toHiragana, toKatakana, download, types } = utils
 import * as pinyin from './pinyin'
 
-import pinyin_dict_withtone_raw from 'ipinyinjs/dict/pinyin_dict_withtone?raw'
-import pinyinUtil_raw from 'ipinyinjs/pinyinUtil?raw'
-const pinyinUtil_mod: any = {}
-Function('window', `${pinyin_dict_withtone_raw}
-window.pinyin_dict_withtone=pinyin_dict_withtone
-${pinyinUtil_raw}`)(pinyinUtil_mod)
-const pinyinUtil: any = pinyinUtil_mod.pinyinUtil
-const pinyinjs = Promise.resolve(pinyinUtil)
-
-const replaceFuncs: Record<string, (str: string) => string> = {
+type ReplaceFuncs = Record<string, (str: string) => string>
+const replaceFuncs: ReplaceFuncs = {
   debugPinyin: str => str.replace(pinyin.reg, (m, a = '', b) => `[${a},${b}]`),
   pinyinToRomaji: pinyin.toRomaji,
+  pinyinToHiragana: pinyin.toHiragana,
   pinyinToKatakana: pinyin.toKatakana,
+  romajiToHiragana: romaji.toHiragana,
   romajiToKatakana: romaji.toKatakana,
   toHiragana, toKatakana,
-  hanziToPinyinTone: str => pinyinUtil.getPinyin(str, ' ', !0, !1),
-  hanziToPinyinNumTone: str => pinyin.toNumTone(pinyinUtil.getPinyin(str, ' ', !0, !1)),
-  hanziToPinyin: str => pinyinUtil.getPinyin(str, ' ', !1, !1),
   hiraganaToChinesePronounce: str => hiragana2ChinesePronounce(toHiragana(str))
 }
 const phonemesModeSet = new Set(['hiraganaToChinesePronounce'])
+
+const pinyinjs = import('ipinyinjs/pinyinUtil').then(mod => mod.default)
+pinyinjs.then(pinyinUtil => {
+  Object.assign<ReplaceFuncs, ReplaceFuncs>(replaceFuncs, {
+    hanziToPinyinTone: str => pinyinUtil.getPinyin(str, ' ', !0, !1),
+    hanziToPinyinNumTone: str => pinyin.toNumTone(pinyinUtil.getPinyin(str, ' ', !0, !1)),
+    hanziToPinyin: str => pinyinUtil.getPinyin(str, ' ', !1, !1),
+  })
+})
 
 export default defineComponent({
   name: 'Lyric Transfer',
@@ -139,13 +139,15 @@ export default defineComponent({
               modelValue: vm.phonemesMode,
               'onUpdate:modelValue'(val: boolean) { vm.phonemesMode = val }
             }, () => '音素模式'), h('br'),
+            h(Button, { 'html-type': 'submit', 'data-name': 'pinyinToRomaji' }, () => '拼音→罗马字'), h('br'),
             h(ButtonGroup, { style: { 'margin-top': '10px' } }, () => [
-              h(Button, { 'html-type': 'submit', 'data-name': 'pinyinToRomaji' }, () => '拼音→罗马字'),
-              h(Button, { 'html-type': 'submit', 'data-name': 'pinyinToKatakana' }, () => '拼音→片假名'),
-              h(Button, { 'html-type': 'submit', 'data-name': 'romajiToKatakana' }, () => '罗马字→片假名')
+              h(Button, { 'html-type': 'submit', 'data-name': 'pinyinToHiragana' }, () => '拼音→平假名'),
+              h(Button, { 'html-type': 'submit', 'data-name': 'romajiToHiragana' }, () => '罗马字→平假名'),
+              h(Button, { 'html-type': 'submit', 'data-name': 'toHiragana' }, () => '片假名→平假名')
             ]), h('br'),
             h(ButtonGroup, { style: { 'margin-top': '10px' } }, () => [
-              h(Button, { 'html-type': 'submit', 'data-name': 'toHiragana' }, () => '片假名→平假名'),
+              h(Button, { 'html-type': 'submit', 'data-name': 'pinyinToKatakana' }, () => '拼音→片假名'),
+              h(Button, { 'html-type': 'submit', 'data-name': 'romajiToKatakana' }, () => '罗马字→片假名'),
               h(Button, { 'html-type': 'submit', 'data-name': 'toKatakana' }, () => '平假名→片假名')
             ]), h('br'),
             h(Awaiter, { promise: vm.pinyinjs }, {
@@ -179,7 +181,7 @@ export default defineComponent({
           autosize: { minRows: 20, maxRows: 1 / 0 },
           placeholder: '输入歌词，或者导入文件',
           modelValue: vm.lyrics,
-          'onUpdate:modelValue'(val: string) { vm.lyrics = val }
+          'onUpdate:modelValue'(value: string) { vm.lyrics = value }
         })
       ]),
       h(Col, { xs: 12, lg: 6 }, () => [
@@ -188,10 +190,9 @@ export default defineComponent({
           autosize: { minRows: 20, maxRows: 1 / 0 },
           placeholder: '结果显示在这里，或者导出文件',
           modelValue: vm.output,
-          'onUpdate:modelValue'(val: string) { vm.output = val }
+          'onUpdate:modelValue'(value: string) { vm.output = value }
         })
       ])
     ])
-
   }
 })

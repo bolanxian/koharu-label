@@ -10,7 +10,8 @@ export const Awaiter = defineComponent({
   setup() {
     return {
       state: sr<State>('empty'),
-      value: sr()
+      value: sr(),
+      set: new WeakSet()
     }
   },
   watch: {
@@ -20,12 +21,15 @@ export const Awaiter = defineComponent({
           this.settle('empty', void 0)
           return
         }
-        this.settle('pending', void 0)
+        const { set, settle } = this
+        if (set.has(promise)) { return }
+        settle('pending', void 0)
         Promise.resolve(promise).then((value) => {
-          if (this.promise === promise) { this.settle('fulfilled', value) }
+          if (this.promise === promise) { settle('fulfilled', value) }
         }, (e) => {
-          if (this.promise === promise) { this.settle('rejected', e) }
+          if (this.promise === promise) { settle('rejected', e) }
         })
+        set.add(promise)
       },
       immediate: true
     }
@@ -38,10 +42,10 @@ export const Awaiter = defineComponent({
     }
   },
   render() {
-    const { state, value } = this
-    let fn = this.$slots[state]
+    const { $slots, state, value } = this
+    let fn = $slots[state]
     if (fn != null) { return fn(value) }
-    fn = this.$slots.default
+    fn = $slots.default
     return fn != null ? fn(state, value) : null
   }
 })
