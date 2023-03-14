@@ -202,7 +202,7 @@ def savefig():
 if __name__=='__main__':
     port=6701
     url='http://127.0.0.1:'+str(port)
-    def test():
+    def testWindows():
         from time import sleep
         import urllib
         while True:
@@ -219,7 +219,10 @@ if __name__=='__main__':
         print('端口被占用')
     except urllib.error.URLError as e:
     '''
-    from threading import Thread
-    thread=Thread(target=test,args=[])
-    thread.start()
+    import platform
+    system=platform.system()
+    if system=="Windows":
+        from threading import Thread
+        thread=Thread(target=testWindows,args=[])
+        thread.start()
     app.run(port=port)

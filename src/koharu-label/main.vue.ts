@@ -47,7 +47,7 @@ export default defineComponent({
     this.$emit('mount:app', this)
   },
   computed: {
-    audioName(): string | void {
+    audioName(): string | undefined {
       const { audio, worldResult } = this
       if (audio != null && worldResult != null) {
         return audio.name.replace(utils.EXT_REG, '')
@@ -171,7 +171,7 @@ export default defineComponent({
       console.log(zeroRanges, sequence)
       this.saveFile(sequence, audioName + '.f0')
     },
-    async exportSvp() {
+    async createSvpFile() {
       const vm = this, { labFile, audio, audioName, worldResult, phonemesRadio } = vm
       const inst = vm.inst = new SvpFile(+vm.bpm)
       inst.basePitch = +vm.basePitch
@@ -182,7 +182,7 @@ export default defineComponent({
       if (labFile != null) {
         inst.injectLab(await labFile.text())
       } else if (worldResult != null) {
-        const dur = 176400000 * 2, len = inst.calcOffset(worldResult.t.at(-1) ?? 0)
+        let dur = 176400000 * 2, len = inst.calcOffset(worldResult.t.at(-1) ?? 0)
         let beginIndex = 0, i, begin, end
         for (i = 0; i < len; i += dur) {
           [begin, end] = inst.findPitchRange(i, i + dur, beginIndex)
@@ -207,9 +207,18 @@ export default defineComponent({
         const { data, fs } = audio
         inst.injectLoudnessWithEnvelope(data as ArrayLike<number>, fs)
       }
-      const svp = inst.toJSON()
-      if (audioName != null) { svp.library[0].name = audioName }
-      vm.saveFile([JSON.stringify(svp), '\0'], audioName + '.svp')
+      return inst
+    },
+    async exportSvp() {
+      const vm = this, { audioName } = vm
+      const inst = await vm.createSvpFile()
+      const svp = inst.toJSON(audioName)
+      this.saveFile([JSON.stringify(svp), '\0'], audioName + '.svp')
+    },
+    async exportUstx() {
+      const vm = this, { audioName } = vm
+      const inst = await vm.createSvpFile()
+      this.saveFile([inst.toUstx(audioName)], audioName + '.ustx')
     },
     async saveFile(sequence: BlobPart[], name: string) {
       const { handle } = this
@@ -226,22 +235,30 @@ export default defineComponent({
     return h(Row, { gutter: 5 }, () => [
       h(Col, { xs: 24, lg: 12 }, () => [
         h(DropFile, { global: true, onChange: vm.handleChange }),
-        h(Card, {
-          icon: vm.labFile != null ? 'md-document' : '',
-          title: vm.labFile != null ? vm.labFile.name : '需要 lab 文件'
-        }, {
+        h(Card, {}, {
+          title: () => {
+            const name = vm.labFile?.name
+            return h('p', {}, [
+              name != null ? h('i', { class: "ivu-icon ivu-icon-md-document" }) : null,
+              h('span', { title: name ?? '' }, [name ?? '需要 lab 文件'])
+            ])
+          },
           extra: () => h(Button, {
             disabled: vm.labFile == null,
             onClick: vm.closeLabFile,
           }, () => h(Icon, { type: "md-close" }))
         }),
-        h(Card, {
-          icon: vm.audioName != null ? 'md-document' : '',
-          title: vm.audio != null ? vm.audio.name : '需要 f0 文件'
-        }, {
+        h(Card, {}, {
+          title: () => {
+            const name = vm.audio?.name
+            return h('p', {}, [
+              vm.audioName != null ? h('i', { class: "ivu-icon ivu-icon-md-document" }) : null,
+              h('span', { title: name ?? '' }, [name ?? '需要 f0 文件'])
+            ])
+          },
           extra: () => h(ButtonGroup, {}, () => [
             h(Button, {
-              disabled: !(vm.worldResult && vm.worldResult.t[1] === 0.005),
+              disabled: !(vm.worldResult?.t[1] === 0.005),
               onClick: vm.exportF0
             }, () => '导出 f0'),
             h(Button, {
@@ -263,20 +280,24 @@ export default defineComponent({
             h(Button, {
               disabled: vm.audioName == null && vm.labFile == null,
               onClick: vm.exportSvp
-            }, () => 'svp')
+            }, () => 'svp'),
+            h(Button, {
+              disabled: vm.audioName == null && vm.labFile == null,
+              onClick: vm.exportUstx
+            }, () => 'ustx')
           ]),
           default: () => [
             h(Input, {
               modelValue: vm.bpm,
               'onUpdate:modelValue'(bpm: string) { vm.bpm = bpm }
             }, {
-              prepend: () => h('span', {}, 'BPM:')
+              prepend: () => h('span', {}, ['BPM:'])
             }),
             h(Input, {
               modelValue: vm.basePitch,
               'onUpdate:modelValue'(value: string) { vm.basePitch = value }
             }, {
-              prepend: () => h('span', {}, '基准音高:'),
+              prepend: () => h('span', {}, ['基准音高:']),
               append: () => h(Checkbox, {
                 modelValue: vm.refinePitch,
                 'onUpdate:modelValue'(value: boolean) { vm.refinePitch = value }

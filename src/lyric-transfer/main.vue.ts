@@ -35,7 +35,7 @@ pinyinjs.then(pinyinUtil => {
 })
 
 export default defineComponent({
-  name: 'Lyric Transfer',
+  name: 'Lyric Preprocessor',
   data() {
     return {
       file: null as File | null,

@@ -1,5 +1,5 @@
 ## Koharu Label
-将发声时机和音高组合为 Synthesizer V Studio 工程文件。
+将发声时机和音高组合为 Synthesizer V Studio 或 OpenUtau 工程文件。
 
 ### 从 NEUTRINO
 `NEUTRINO/score/label/timing/*.lab`  

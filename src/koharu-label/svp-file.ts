@@ -1,4 +1,7 @@
 
+import YAML from "yaml"
+import sampleUstx from '../assets/sample.ustx?raw'
+const { trunc, floor } = Math
 const attributes = {
   "tF0Offset": 0, "tF0Left": 0, "tF0Right": 0, "dF0Left": 0, "dF0Right": 0, "dF0Vbr": 0
 }
@@ -41,10 +44,10 @@ export default class SvpFile {
     this.notes = []
   }
   calcOffset(sec: number): number {
-    return Math.trunc(sec * this.offsetRatio)
+    return trunc(sec * this.offsetRatio)
   }
   calcLabOffset(sec: number): number {
-    return Math.trunc(sec * this.offsetRatio / 10000000)
+    return trunc(sec * this.offsetRatio / 10000000)
   }
   createNote(onset: number, duration: number, lyrics: string): Note {
     return SvpFile.createNote(
@@ -116,17 +119,19 @@ export default class SvpFile {
   }
   margeConsonantNote() {
     const { notes } = this
-    for (let i = 0; i < notes.length; i++) {
+    let i = 0, len = notes.length - 1; for (; i < len; i++) {
       const note = notes[i]
-      if (!note.phonemes) { continue }
-      const prev = notes[i - 1], next = notes[i + 1]
+      if (!consonants.includes(note.lyrics)) { continue }
+      const next = notes[i + 1]
+      if (consonants.includes(next.lyrics)) { continue }
+      const prev = notes[i - 1]
       next.lyrics = note.phonemes + next.lyrics
-      if (prev && prev.onset + prev.duration === note.onset) {
+      if (prev?.onset + prev?.duration === note.onset) {
         prev.duration += note.duration
-        notes.splice(i, 1)
-      } else {
-        note.phonemes = note.lyrics = ''
       }
+      //note.phonemes = note.lyrics = ''
+      notes.splice(i, 1)
+      len = notes.length - 1
     }
   }
   refinePitch() {
@@ -162,7 +167,7 @@ export default class SvpFile {
       this.loudness.push(s)
     }
   }
-  toJSON() {
+  toJSON(name?: string) {
     const mainId = SvpFile.generateUUID()
     const libId = SvpFile.generateUUID()
     const emptyParam = { "mode": "cubic", "points": [] }
@@ -173,7 +178,7 @@ export default class SvpFile {
         "tempo": [{ "position": 0, "bpm": this.bpm }]
       },
       "library": [{
-        "name": "Part 1", "uuid": libId,
+        "name": name ?? "Part 1", "uuid": libId,
         "parameters": {
           "pitchDelta": { "mode": "cubic", "points": this.pitchDelta },
           "vibratoEnv": emptyParam,
@@ -239,6 +244,28 @@ export default class SvpFile {
         "exportMixDown": true
       }
     }
+  }
+  toUstx(name?: string) {
+    const ustx = YAML.parse(sampleUstx)
+    const ratio = 705600000 / 480
+    ustx.tempos[0].bpm = this.bpm
+    const part = ustx.voice_parts[0]
+    part.name = name
+    const sampleNote = JSON.stringify(part.notes[0])
+    part.notes = this.notes.map(_note => {
+      const note = JSON.parse(sampleNote)
+      note.lyric = _note.lyrics
+      note.tone = _note.pitch
+      note.position = floor(_note.onset / ratio)
+      note.duration = floor((_note.onset + _note.duration) / ratio) - note.position
+      return note
+    })
+    const { xs, ys } = part.curves[0], { pitchDelta } = this
+    let i = 0, len = pitchDelta.length; for (; i < len; i += 2) {
+      xs.push(floor(pitchDelta[i] / ratio))
+      ys.push(floor(pitchDelta[i + 1]))
+    }
+    return YAML.stringify(ustx)
   }
 }
 

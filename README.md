@@ -1,5 +1,5 @@
 # Koharu Label<img alt="" style="float:right" width="100" src="public/favicon.svg">
-将`发声时机`和`音高`组合为`Synthesizer V Studio`工程文件。  
+将`发声时机`和`音高`组合为`Synthesizer V Studio`或`OpenUtau`工程文件。  
 
 
 ## 功能
@@ -9,7 +9,8 @@
   - 其他人声（手动测量发声时机）
 - 输出
   - Synthesizer V Studio
-  - [NEUTRINO](https://n3utrino.work/) (svp->Midi->MusicXML)
+  - [OpenUtau](https://github.com/stakira/OpenUtau/)
+  - [NEUTRINO](https://n3utrino.work/) (svp->Midi->MusicXML，建议搭配[TyouseiSienTool v1.5.1.0](https://github.com/sigprogramming/tyouseisientool/releases/tag/v1.5.1.0))
   
 - 请注意检查相关（声音或软件）的使用规则
 - 在作品中使用时，推荐写上`调校协力：角色名(软件名)`

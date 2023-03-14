@@ -219,7 +219,7 @@ const Main = defineComponent({
         h(DropFile, { global: true, onChange: vm.handleChange }),
         h(Card, {
           icon: vm.f0File != null ? 'md-document' : '',
-          title: vm.f0File != null ? vm.f0File.name : '需要 f0 文件'
+          title: vm.f0File?.name ?? '需要 f0 文件'
         }, {
           extra: () => h(Button, {
             disabled: vm.f0File == null,
@@ -265,7 +265,7 @@ const Main = defineComponent({
             }, () => '合成'),
             default: () => [
               fulfilled ? h('audio', { controls: '', src: output, style: { width: '100%' } }) : null,
-              loading ? h('div', {}, vm.info) : null
+              loading ? h('div', {}, [vm.info]) : null
             ]
           })
         }),
@@ -277,8 +277,8 @@ const Main = defineComponent({
           return h(Card, {}, {
             title: () => [
               h('p', {}, [h('span', {}, [fulfilled ? info.name : 'VOICEVOX'])]),
-              fulfilled ? h('div', { class: 'ivu-cell-label' }, info.brand_name) : null,
-              fulfilled ? h('div', { class: 'ivu-cell-label' }, `版本：${info.version}`) : null
+              fulfilled ? h('div', { class: 'ivu-cell-label' }, [info.brand_name]) : null,
+              fulfilled ? h('div', { class: 'ivu-cell-label' }, [`版本：${info.version}`]) : null
             ],
             extra: () => h(ButtonGroup, {}, () => [
               h(Button, { loading, onClick: vm.setVoicevoxBaseURL }, () => 'URL'),
