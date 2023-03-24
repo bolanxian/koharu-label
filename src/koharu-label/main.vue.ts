@@ -4,18 +4,23 @@
 import * as Vue from "vue"
 const { defineComponent, createVNode: h, ref, shallowRef: sr } = Vue
 import * as iview from "view-ui-plus"
-const { Row, Col, Card, Icon, Input, Button, ButtonGroup, Radio, RadioGroup, Checkbox } = iview
+const { Row, Col, Card, Icon, Input, Button, ButtonGroup, Radio, RadioGroup, Checkbox, Select, Option } = iview
 import readme from '../assets/readme.md?markdown'
 import { romaji } from '../lyric-transfer/utils'
 import DropFile from '../components/drop-file.vue'
+import { Awaiter, AwaiterState } from '../components/awaiter.vue'
 import HelloWorld from '../components/hello-world.vue'
 import * as utils from './utils'
-import { PyworldDio, PyWorld, AudioData } from './utils'
+import { AudioData } from './utils'
+import { PyworldDio, PyWorld } from './pyworld'
+import { WorldWasm, isSupport as isSupportWasm } from './world-wasm'
 import SvpFile from './svp-file'
 
+type World = PyWorld | WorldWasm | null
 export default defineComponent({
   name: "Koharu Label",
   props: {
+    isPages: { type: Boolean, default: true },
     baseURL: { type: String, default: '/' }
   },
   data() {
@@ -34,17 +39,36 @@ export default defineComponent({
       iview.Message.error(msg)
       console.exception(msg)
     }
+    const { isPages } = props
     return {
-      world: sr<PyWorld>(new PyWorld(props.baseURL)),
+      world: sr<World>(null),
+      worldType: sr(isPages ? 'World-Wasm' : 'PyWorld'),
+      worldPromise: sr<Promise<World> | null>(null),
       handle: sr<FileSystemDirectoryHandle | null>(null),
       labFile: sr<File | null>(null),
-      audio: sr<File | AudioData<true> | null>(null),
+      audio: sr<File | AudioData<boolean> | null>(null),
       worldResult: sr<PyworldDio | null>(null),
       inst: sr<SvpFile | null>(null)
     }
   },
   mounted() {
     this.$emit('mount:app', this)
+  },
+  watch: {
+    worldType: {
+      handler(worldType: string) {
+        let promise: Promise<World> | null = null
+        this.world = null
+        if (worldType === 'World-Wasm(Async)') {
+          promise = WorldWasm.create(!0)
+        } else if (worldType === 'World-Wasm') {
+          promise = WorldWasm.create(!1)
+        } else if (worldType === 'PyWorld') {
+          promise = Promise.resolve(new PyWorld(this.$props.baseURL))
+        }
+        this.worldPromise = promise
+      }, immediate: true
+    }
   },
   computed: {
     audioName(): string | undefined {
@@ -55,6 +79,10 @@ export default defineComponent({
     },
     audioMsg(): string {
       const { world, audio, worldResult } = this
+      if (world == null) {
+        if (this.worldPromise != null) { return `正在加载 ${this.worldType}` }
+        return ''
+      }
       if (audio != null) {
         if (audio instanceof AudioData) {
           return audio.getInfo()
@@ -63,7 +91,7 @@ export default defineComponent({
           return `使用 ${world.name} 导入音频文件 ${audio.name}`
         }
       }
-      return `PyWorld:${world.baseURL}`
+      return ''
     }
   },
   methods: {
@@ -99,11 +127,12 @@ export default defineComponent({
       this.labFile = null
     },
     async loadAudioFile(file: File) {
+      const { world } = this
       try {
         this.audio = file
-        const audio = await this.world.decodeAudio(file)
+        const audio = await world!.decodeAudio(file)
         audio.name = file.name
-        const result = await this.world[this.useHarvest ? 'harvest' : 'dio'](audio.data, audio.fs)
+        const result = await world![this.useHarvest ? 'harvest' : 'dio'](audio.data, audio.fs)
         this.audio = audio
         this.worldResult = result
       } catch (e) {
@@ -266,7 +295,26 @@ export default defineComponent({
               onClick: vm.closeAudioFile
             }, () => h(Icon, { type: "md-close" }))
           ]),
-          default: () => vm.audioMsg
+          default: () => h(Awaiter, {
+            promise: vm.worldPromise,
+            onSettle(state: AwaiterState, world: World) {
+              if (state === 'fulfilled') { vm.world = world }
+            }
+          }, (state: AwaiterState, world: World) => [
+            h(Select, {
+              style: 'width: 200px;display: block;margin-bottom: .8em',
+              transfer: true,
+              disabled: vm.audio != null,
+              prefix: state !== 'pending' ? state !== 'rejected' ? '' : 'ios-close' : 'ios-loading',
+              modelValue: vm.worldType,
+              'onUpdate:modelValue'(value: string) { vm.worldType = value }
+            }, () => [
+              h(Option, { value: 'World-Wasm(Async)', disabled: !isSupportWasm }, () => 'World-Wasm(Async)'),
+              h(Option, { value: 'World-Wasm', disabled: !isSupportWasm }, () => 'World-Wasm'),
+              h(Option, { value: 'PyWorld' }, () => 'PyWorld')
+            ]),
+            vm.audioMsg
+          ])
         }),
         h(Card, {
           icon: vm.audioName != null ? 'md-document' : '',

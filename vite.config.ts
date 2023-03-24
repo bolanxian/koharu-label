@@ -41,6 +41,14 @@ export default defineConfig({
           return `export default ${JSON.stringify(info)}`
         }
       }
+    },
+    {
+      name: 'node-wav',
+      transform(code, id) {
+        if (id.endsWith('node_modules/node-wav/index.js')) {
+          return `const Buffer=Object\n${code}`
+        }
+      }
     }
   ]
 })
