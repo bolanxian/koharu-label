@@ -2,8 +2,8 @@
 import sys,os
 sys.path.insert(0,os.path.join(os.path.dirname(__file__),'site-packages'))
 
-from flask import Flask,request,jsonify
-app=Flask(__name__,static_folder='./dist',static_url_path='/')
+from flask import Flask,request,jsonify,render_template
+app=Flask(__name__,template_folder='./dist',static_folder='./dist',static_url_path='/')
 max_content_length=128*1024*1024
 app.config['MAX_CONTENT_LENGTH']=max_content_length
 
@@ -28,7 +28,7 @@ def unpackNdarray(array:dict)->np.ndarray:
 
 @app.route('/')
 def index():
-    return app.send_static_file('index.html')
+    return render_template('index.html',backend='python')
 
 @app.route('/env',methods=['GET'])
 def env():

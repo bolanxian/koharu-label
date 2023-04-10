@@ -30,10 +30,10 @@
   "devDependencies": {
     "@types/marked": "^4.0.3",
     "@types/node-wav": "^0.0.0",
-    "@vitejs/plugin-vue": "^3.0.3",
+    "@vitejs/plugin-vue": "^4.1.0",
     "marked": "^4.0.17",
-    "typescript": "^4.8.2",
-    "vite": "^3.0.9",
+    "typescript": "^4.9.3",
+    "vite": "^4.2.0",
     "vue-tsc": "^0.40.5"
   }
 }

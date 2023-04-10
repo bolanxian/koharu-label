@@ -1,11 +1,11 @@
 
 import msgpack from '@ygoe/msgpack'
 import * as z from 'zod'
-import { Ndarray, TypedArray, TypeNdarray } from './ndarray'
+import { Ndarray, refine, TypedArray, TypeNdarray } from './ndarray'
 import { isPlainObject, zodAudioInfo, AudioData } from './utils'
 
-const zodFloat64Array = Ndarray.refine(1, 'float64')
-const zodFloat64Array2d = Ndarray.refine(2, 'float64')
+const zodFloat64Array = refine(1, 'float64')
+const zodFloat64Array2d = refine(2, 'float64')
 const zodPyworldDio = z.object({
   t: zodFloat64Array,
   f0: zodFloat64Array

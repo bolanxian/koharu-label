@@ -8,17 +8,22 @@ import App from './components/app.vue'
 import './components/drop-file.vue'
 import './components/awaiter.vue'
 
-let isPages = location.hostname.match(/(?<=\.)git[\w-]+(?=\.io$)/i) || location.protocol === "file:" || import.meta.env.DEV
-if (typeof WebAssembly === 'undefined') { isPages = !1 }
-const baseURL = isPages ? 'http://127.0.0.1:6701/' : '/'
+let backend = document.documentElement.dataset.backend ?? '{{backend}}'
+if (backend === '{{backend}}') {
+  let dev = import.meta.env.DEV
+  if (dev) { backend = 'dev' } else {
+    let pages = location.hostname.match(/(?<=\.)git[\w-]+(?=\.io$)/i)
+    if (pages != null) { backend = 'pages:' + pages[0] }
+    if (typeof WebAssembly === 'undefined') { backend = 'python' }
+  }
+}
+const baseURL = new URL('/', location.href).href
 const app = Vue.createApp(App, {
-  isPages, baseURL, 'onMount:app'(value: any) {
+  backend, baseURL, 'onMount:app'(value: any) {
     (window as any).vm = value
   }
 })
 const vm = app.mount('#app')
-const exports = {
+Object.assign(window, {
   Vue, iview, msgpack, z, app, vm
-}
-export default exports
-Object.assign(window, exports)
+})

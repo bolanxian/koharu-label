@@ -1,5 +1,4 @@
 
-import { encode, decode } from 'node-wav'
 import * as WORLD from 'world-wasm'
 import { AudioData } from './utils'
 import TypedArray = WORLD.ndarray.TypedArray
@@ -17,12 +16,11 @@ export class WorldWasm {
   async encodeAudio(
     data: TypedArray<'float32' | 'float64'>, fs: number, format?: string, subtype?: string
   ): Promise<Blob> {
-    if (!(data instanceof Float32Array)) { data = new Float32Array(data) }
-    return new Blob([encode([data], { sampleRate: fs, bitDepth: 16, float: !1 })])
+    return this.#world.wavwrite(data, fs)
   }
   async decodeAudio(blob: Blob) {
-    const { channelData, sampleRate: fs } = decode(await blob.arrayBuffer() as any)
-    return new AudioData({ data: channelData[0], fs })
+    const [data, fs] = await this.#world.wavread(await blob.arrayBuffer())
+    return new AudioData({ data, fs })
   }
   async dio(data: TypedArray<'float32' | 'float64'>, fs: number) {
     const [f0, t] = await this.#world.dio(data, fs, 5, true)

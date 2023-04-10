@@ -20,7 +20,7 @@ type World = PyWorld | WorldWasm | null
 export default defineComponent({
   name: "Koharu Label",
   props: {
-    isPages: { type: Boolean, default: true },
+    backend: { type: String, default: '' },
     baseURL: { type: String, default: '/' }
   },
   data() {
@@ -39,10 +39,10 @@ export default defineComponent({
       iview.Message.error(msg)
       console.exception(msg)
     }
-    const { isPages } = props
+    const { backend } = props
     return {
       world: sr<World>(null),
-      worldType: sr(isPages ? 'World-Wasm' : 'PyWorld'),
+      worldType: sr(backend !== 'python' ? 'World-Wasm' : 'PyWorld'),
       worldPromise: sr<Promise<World> | null>(null),
       handle: sr<FileSystemDirectoryHandle | null>(null),
       labFile: sr<File | null>(null),

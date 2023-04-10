@@ -96,7 +96,7 @@ const T = utils.multiLocale({
     '输入　角色ID，最小元音长度，最大元音长度，音高：': 'Input speaker id,min vowel length,max vowel length,pitch:\n'
   },
 })
-const getVoicevoxInfo = async () => {
+const getVoxInfo = async () => {
   const info = await vox.getInfo()
   const speakers = await vox.getSpeakers()
   return { ...info, speakers }
@@ -104,12 +104,12 @@ const getVoicevoxInfo = async () => {
 const Main = defineComponent({
   name: 'Koharu Label Syncer',
   props: {
-    isPages: { type: Boolean, default: true },
+    backend: { type: String, default: '' },
     baseURL: { type: String, default: '/' }
   },
   data() {
     return {
-      voicevoxInfo: getVoicevoxInfo(),
+      voxInfo: getVoxInfo(),
       process: null as string | null,
       output: null as Promise<string | null> | null,
       imgs: [] as string[],
@@ -123,10 +123,10 @@ const Main = defineComponent({
     }
   },
   setup(props, ctx) {
-    const { isPages } = props
+    const { backend } = props
     return {
       world: sr<World>(null),
-      worldType: sr(isPages ? 'World-Wasm' : 'PyWorld'),
+      worldType: sr(backend !== 'python' ? 'World-Wasm' : 'PyWorld'),
       worldPromise: sr<Promise<World> | null>(null),
       f0File: sr<File | null>(null),
       audio: sr<File | AudioData<boolean> | null>(null),
@@ -160,12 +160,12 @@ const Main = defineComponent({
     }
   },
   methods: {
-    getVoicevoxInfo() { this.voicevoxInfo = getVoicevoxInfo() },
-    setVoicevoxBaseURL() {
+    getVoxInfo() { this.voxInfo = getVoxInfo() },
+    setVoxBaseURL() {
       let url = prompt('VOICEVOX Engine URL:', vox.getBaseURL())
       if (url == null) { return }
       vox.setBaseURL(url === '' ? void 0 : url)
-      this.getVoicevoxInfo()
+      this.getVoxInfo()
     },
     async handleChange(files: File[]) {
       const { audioTypes } = AudioData
@@ -312,24 +312,30 @@ const Main = defineComponent({
           })
         }),
         h(Awaiter, {
-          promise: vm.voicevoxInfo,
-        }, (state: AwaiterState, info: Awaited<typeof vm["voicevoxInfo"]>) => {
+          promise: vm.voxInfo,
+        }, (state: AwaiterState, info: Awaited<typeof vm["voxInfo"]>) => {
           const fulfilled = state === 'fulfilled', rejected = state === 'rejected'
           const loading = state === 'pending', empty = state === 'empty'
           return h(Card, {}, {
             title: () => [
-              h('p', {}, [h('span', {}, [fulfilled ? info.name : 'VOICEVOX'])]),
-              fulfilled ? h('div', { class: 'ivu-cell-label' }, [info.brand_name]) : null,
+              h('p', {}, [h('span', {}, [fulfilled ? info.brand_name : 'VOICEVOX'])]),
+              fulfilled ? h('div', { class: 'ivu-cell-label' }, [info.name]) : null,
               fulfilled ? h('div', { class: 'ivu-cell-label' }, [`版本：${info.version}`]) : null
             ],
             extra: () => h(ButtonGroup, {}, () => [
-              h(Button, { loading, onClick: vm.setVoicevoxBaseURL }, () => 'URL'),
-              h(Button, { loading, onClick: vm.getVoicevoxInfo }, () => '刷新')
+              h(Button, { loading, onClick: vm.setVoxBaseURL }, () => 'URL'),
+              h(Button, { loading, onClick: vm.getVoxInfo }, () => '刷新')
             ]),
-            default: () => [
-              fulfilled ? h('pre', { innerText: info.speakers }) : null,
-              rejected ? T('连接 VOICEVOX ENGINE 失败') : null
-            ]
+            default: () => {
+              if (fulfilled) { return [h('pre', { innerText: info.speakers })] }
+              if (rejected) {
+                const href = new URL('/setting', vox.getBaseURL()).href
+                return [
+                  T('连接 VOICEVOX Engine 失败'), h('br'),
+                  '可能需要前往 ', h('a', { href }, [href]), ' 设置CORS'
+                ]
+              }
+            }
           })
         }),
         Array.from(vm.imgs, src => h('img', { src }))

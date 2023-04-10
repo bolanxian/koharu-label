@@ -1,10 +1,10 @@
 type ForAwait<T> = (Iterable<T> | AsyncIterable<T>) & Partial<Iterable<T> & AsyncIterable<T>>
-export class IterableSource<R> implements UnderlyingSource<R>{
+export class IterableSource<R> implements UnderlyingDefaultSource<R>{
   iterator: Iterator<R> | AsyncIterator<R>
   constructor(iterable: ForAwait<R>) {
     this.iterator = iterable[Symbol.asyncIterator]?.() ?? iterable[Symbol.iterator]!()
   }
-  async pull(controller: ReadableStreamController<R>) {
+  async pull(controller: ReadableStreamDefaultController<R>) {
     try {
       const result = await this.iterator.next()
       result.done ? controller.close() : controller.enqueue(await result.value)
@@ -21,15 +21,21 @@ export class IterableSource<R> implements UnderlyingSource<R>{
   }
 }
 export class ReadableIterator<R>{
-  reader: ReturnType<ReadableStream<R>['getReader']>
+  reader: ReadableStreamDefaultReader<R>
   preventCancel: boolean
   constructor(readable: ReadableStream<R>, options?: StreamPipeOptions) {
     this.preventCancel = options?.preventCancel ?? false
     this.reader = readable.getReader()
   }
-  next(): Promise<IteratorResult<R, void>> { return this.reader.read() as any }
+  next() {
+    return this.reader.read() as Promise<IteratorResult<R, void>>
+  }
   async return(): Promise<IteratorReturnResult<void>> {
-    if (!this.preventCancel) { await this.reader.cancel() }
+    if (this.preventCancel) {
+      this.reader.releaseLock()
+    } else {
+      await this.reader.cancel()
+    }
     return { done: true, value: void 0 }
   }
   declare [Symbol.asyncIterator]: () => this

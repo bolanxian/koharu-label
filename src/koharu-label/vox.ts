@@ -133,7 +133,7 @@ export const getSpeakers = async () => {
     for (const style of speaker.styles) {
       const id = padStart.call(style.id, 3, ' ')
       const name = padStart.call(speaker.name, 6, '\u3000')
-      str += `${id}:${name}(${style.name})\n`
+      str += `${id}:${name}（${style.name}）\n`
     }
   }
   return str
