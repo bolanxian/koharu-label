@@ -25,7 +25,7 @@ export default defineConfig({
   base: './',
   build: {
     target: 'esnext',
-    polyfillModulePreload: false,
+    modulePreload: { polyfill: false },
     cssCodeSplit: false,
     minify: false
   },
@@ -35,10 +35,24 @@ export default defineConfig({
     ipinyinjs(),
     {
       name: 'markdown',
+      enforce: 'pre',
       transform(code, id) {
         if (id.endsWith('?markdown')) {
           const info = marked.parse(code).replace(/\<a ([^>]*)\>/g, '<a target="_blank" $1>')
           return `export default ${JSON.stringify(info)}`
+        }
+      }
+    },
+    {
+      name: 'table-reg',
+      enforce: 'pre',
+      transform(code, id) {
+        if (id.endsWith('?table-reg')) {
+          const table = JSON.parse(code.slice(code.indexOf('{'), code.lastIndexOf('}') + 1))
+          let keys = Object.keys(table)
+          keys.sort((a, b) => b.length - a.length)
+          keys = keys.map(s => s.replace(/\\/g, '\\\\'))
+          return `export default RegExp(${JSON.stringify(keys.join('|'))}, 'g')`
         }
       }
     },

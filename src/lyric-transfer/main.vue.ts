@@ -57,7 +57,7 @@ export default defineComponent({
   methods: {
     async loadFile(type: utils.CtorTypes, file: File) {
       try {
-        const inst = await type.loadAsFile(this.file = file)
+        const inst = await type.loadAsFile<utils.InstTypes>(this.file = file)
         this.inst = inst
         const lyrics = inst.getLyrics()
         this.length = `[${lyrics.length}]`
@@ -169,7 +169,7 @@ export default defineComponent({
             h(Button, {
               style: { 'margin-top': '10px' }, 'html-type': 'submit',
               'data-name': 'hiraganaToChinesePronounce'
-            }, () => '假名→汉语音素'), '(',
+            }, () => '假名→汉语音素(svp)'), '(',
             h('a', { href: 'https://www.nicovideo.jp/watch/sm38322727', target: '_blank' }, 'sm38322727'),
             ')', h('br')
           ])

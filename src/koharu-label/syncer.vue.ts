@@ -112,6 +112,7 @@ const Main = defineComponent({
       voxInfo: getVoxInfo(),
       process: null as string | null,
       output: null as Promise<string | null> | null,
+      outputState: 'empty' as AwaiterState,
       imgs: [] as string[],
 
       lab0: '',
@@ -272,7 +273,7 @@ const Main = defineComponent({
             h(Select, {
               style: 'width: 200px;display: block;margin-bottom: .8em',
               transfer: true,
-              disabled: vm.audio != null,
+              disabled: vm.audio != null || vm.outputState === 'pending',
               prefix: state !== 'pending' ? state !== 'rejected' ? '' : 'ios-close' : 'ios-loading',
               modelValue: vm.worldType,
               'onUpdate:modelValue'(value: string) { vm.worldType = value }
@@ -287,7 +288,7 @@ const Main = defineComponent({
         h(Awaiter, {
           promise: vm.output,
           onSettle(state: AwaiterState, value: Awaited<typeof vm["output"]>, _state: typeof state, _value: typeof value) {
-            //console.log('onSettle', state, value, _state, _value)
+            vm.outputState = state
             if (_state === 'fulfilled' && typeof _value === 'string') { URL.revokeObjectURL(_value) }
           }
         }, (state: AwaiterState, output: Awaited<typeof vm["output"]>) => {
@@ -332,7 +333,7 @@ const Main = defineComponent({
                 const href = new URL('/setting', vox.getBaseURL()).href
                 return [
                   T('连接 VOICEVOX Engine 失败'), h('br'),
-                  '可能需要前往 ', h('a', { href }, [href]), ' 设置CORS'
+                  '可能需要前往 ', h('a', { target: "_blank", href }, [href]), ' 设置CORS'
                 ]
               }
             }

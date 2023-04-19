@@ -10,6 +10,10 @@ declare module '*?markdown' {
   const html: string
   export default html
 }
+declare module '*?table-reg' {
+  const reg: RegExp
+  export default reg
+}
 declare module 'ipinyinjs/pinyinUtil' {
   export default {
     getPinyin(chinese: string, splitter: string, withtone: boolean, polyphone: boolean): string
@@ -24,7 +28,7 @@ interface Console {
 interface FileSystemFileHandle {
   createWritable(): Promise<FileSystemWritableFileStream>
 }
-interface FileSystemWritableFileStream extends WritableStream {
+interface FileSystemWritableFileStream extends WritableStream<Uint8Array> {
   seek(): Promise<void>
   truncate(): Promise<void>
   write(data: BlobPart): Promise<void>

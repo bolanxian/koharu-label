@@ -1,5 +1,7 @@
 
+import YAML from 'yaml'
 import table from './table'
+import romajiReg from './table?table-reg'
 const { fromCharCode } = String
 const { charCodeAt, replace } = String.prototype
 type ReplacerList = [RegExp, string | ((substring: string, ...args: any[]) => string)][]
@@ -25,7 +27,7 @@ export const replacerShort = (list: ReplacerList) => {
   fn.map = new Map(list)
   return fn
 }
-const romajiReg = RegExp(Object.keys(table).sort((a, b) => b.length - a.length).join('|'), 'g')
+
 export const romaji = {
   table,
   reg: romajiReg,
@@ -65,11 +67,10 @@ export const download = (sequence: string | BlobPart[] | Blob, filename = '') =>
 }
 
 export abstract class TypeAsText {
-  static async loadAsFile<T extends typeof TypeAsText>(this: T, file: Blob) {
-    return new (this as any)(await file.text()) as InstanceType<T>
+  static async loadAsFile<T extends TypeAsText>(this: { new(text: string): T }, file: Blob): Promise<T> {
+    return new this(await file.text())
   }
   text: string
-  abstract data: any
   constructor(text: string) {
     this.text = text
     this.reset()
@@ -95,13 +96,24 @@ abstract class XML extends TypeAsText {
   }
   static getTextNode(el: Node): CDATASection | Text | null {
     const node = el.firstChild
-    if (
-      node && node === el.lastChild &&
-      (node.nodeType === Node.CDATA_SECTION_NODE || node.nodeType === Node.TEXT_NODE)
-    ) {
-      return node as any
+    if (node != null && node === el.lastChild) {
+      const type = node.nodeType
+      if (type === Node.CDATA_SECTION_NODE) {
+        return node as CDATASection
+      }
+      if (type === Node.TEXT_NODE) {
+        return node as Text
+      }
     }
     return null
+  }
+  static setText(el: Node, value: string) {
+    const node = XML.getTextNode(el)
+    if (node != null) {
+      node.data = value
+    } else {
+      el.textContent = value
+    }
   }
   declare data: Document
   abstract [Symbol.iterator](): IterableIterator<Element>
@@ -116,12 +128,7 @@ abstract class XML extends TypeAsText {
     for (const note of this) {
       const { done, value } = it.next()
       if (done) return
-      const node = XML.getTextNode(note)
-      if (node) {
-        node.data = value
-      } else {
-        note.textContent = value
-      }
+      XML.setText(note, value)
     }
   }
   setPhonemes(_it: Iterable<string>) { }
@@ -167,14 +174,74 @@ export const types = {
       return JSON.stringify(this.data) + '\0'
     }
   },
+  ustx: class extends TypeAsText {
+    declare data: any
+    reset() {
+      return this.data = YAML.parse(this.text)
+    }
+    *[Symbol.iterator]() {
+      const { data } = this
+      for (const part of data.voice_parts) {
+        yield* part.notes
+      }
+    }
+    getLyrics(): string[] {
+      return Array.from(this, n => n.lyric)
+    }
+    setLyrics(_it: Iterable<string>) {
+      const it = _it[Symbol.iterator]()
+      for (const note of this) {
+        const { done, value } = it.next()
+        if (done) return
+        note.lyric = value
+      }
+    }
+    setPhonemes(_it: Iterable<string>) {
+      const it = _it[Symbol.iterator]()
+      for (const note of this) {
+        const { done, value } = it.next()
+        if (done) return
+        note.phoneme_overrides = [{ index: 0, phoneme: value }]
+      }
+    }
+    export() {
+      return YAML.stringify(this.data)
+    }
+  },
   musicxml: class extends XML {
     *[Symbol.iterator](): Generator<Element> {
       yield* this.data.querySelectorAll('lyric>text') as any
     }
   },
   vsqx: class extends XML {
-    *[Symbol.iterator](): Generator<Element> {
-      yield* this.data.querySelectorAll('note>y') as any
+    #queryLyrics: string
+    #queryPhonemes: string
+    constructor(text: string) {
+      super(text)
+      const { tagName } = this.data.documentElement
+      switch (tagName) {
+        case 'vsq4':
+          this.#queryLyrics = 'note>y'
+          this.#queryPhonemes = 'note>p'
+          break
+        case 'vsq3':
+          this.#queryLyrics = 'note>lyric'
+          this.#queryPhonemes = 'note>phnms'
+          break
+        default:
+          throw new TypeError(`Unknown vsqx file: <${tagName}>`)
+      }
+    }
+    *[Symbol.iterator](isPhoneme = false) {
+      yield* this.data.querySelectorAll(isPhoneme ? this.#queryPhonemes : this.#queryLyrics) as any as Element[]
+    }
+    setPhonemes(_it: Iterable<string>) {
+      const it = _it[Symbol.iterator]()
+      for (const note of this.data.querySelectorAll(this.#queryPhonemes) as any as Element[]) {
+        const { done, value } = it.next()
+        if (done) return
+        XML.setText(note, value)
+      }
     }
   }
 }
