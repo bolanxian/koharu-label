@@ -1,12 +1,12 @@
 /**
  * @createDate 2022-2-26 16:41:35
 */
-import * as Vue from "vue"
-const { defineComponent, createVNode: h, ref, shallowRef: sr } = Vue
-import * as iview from "view-ui-plus"
-const { Row, Col, Card, Icon, Input, Button, ButtonGroup, Select, Option } = iview
+import { defineComponent, createVNode, shallowRef as sr } from "vue"
+const h = createVNode
+import { Message, Row, Col, Card, Icon, Input, Button, ButtonGroup, Select, Option } from "view-ui-plus"
+import '../components/app.vue'
 import DropFile from '../components/drop-file.vue'
-import Awaiter, { AwaiterState } from '../components/awaiter.vue'
+import { Awaiter, AwaiterState } from '../components/awaiter.vue'
 import * as utils from './utils'
 import { AudioData } from './utils'
 import { Ndarray, TypeNdarray, TypedArray, TypedArrayConstructor } from './ndarray'
@@ -76,7 +76,7 @@ const createProcesser = <
       })
       await promise
     } catch (e) {
-      iview.Message.error('合成失败')
+      Message.error('合成失败')
       throw e
     } finally {
       this.process = null
@@ -177,8 +177,8 @@ const Main = defineComponent({
         else if (type === 'f0') { f0 = file }
         else if (type === 'vvproj') {
           utils.download([await utils2.standardizationVvproj(file)], file.name)
-        }
-        else if (audioTypes.has(type)) { audio = file }
+          return
+        } else if (audioTypes.has(type!)) { audio = file }
       }
       if (lab != null) { this[audio != null ? 'lab1' : 'lab0'] = `#filename=${lab.name}\n${await lab.text()}` }
       if (f0 != null) { this.f0File = f0 }
@@ -197,7 +197,7 @@ const Main = defineComponent({
         this.worldResult = result
       } catch (e) {
         this.closeAudioFile()
-        iview.Message.error('导入失败')
+        Message.error('导入失败')
         throw e
       }
       if (this.useSavefig && world instanceof PyWorld) try {
@@ -207,11 +207,11 @@ const Main = defineComponent({
           URL.revokeObjectURL(img)
         }
         imgs.length = 0
-        const argss = [
+        const argss: [(TypedArray | Ndarray)[], boolean?][] = [
           [[audio.f0]],
           [[audio.sp]],
           [[audio.ap], false]
-        ] as [Ndarray[], boolean][]
+        ]
         for (let i = 0; i < argss.length; i++) {
           imgs[i] = URL.createObjectURL(await world.savefig(...argss[i]))
         }
@@ -230,7 +230,7 @@ const Main = defineComponent({
     log(msg?: string | null) {
       if (msg == null) { this.info = ''; return }
       this.info = msg
-      iview.Message.info(msg)
+      Message.info(msg)
     },
     handleSynthesize() { },
     handleSynthesizeTest() { },
@@ -266,9 +266,7 @@ const Main = defineComponent({
           ]),
           default: () => h(Awaiter, {
             promise: vm.worldPromise,
-            onSettle(state: AwaiterState, world: World) {
-              if (state === 'fulfilled') { vm.world = world }
-            }
+            onFulfilled(world: World) { vm.world = world }
           }, (state: AwaiterState, world: World) => [
             h(Select, {
               style: 'width: 200px;display: block;margin-bottom: .8em',

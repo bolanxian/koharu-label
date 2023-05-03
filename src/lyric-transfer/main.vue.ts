@@ -1,19 +1,20 @@
 /**
  * @createDate 2021-5-15 19:44:43
 */
-import * as Vue from "vue"
-const { defineComponent, createVNode: h, shallowRef: sr } = Vue
-import * as iview from "view-ui-plus"
-const { Row, Col, Affix, Card, Icon, Input, Button, ButtonGroup, Checkbox } = iview
+import { defineComponent, createVNode, shallowRef as sr } from 'vue'
+const h = createVNode
+import { Message, Row, Col, Affix, Card, Icon, Input, Button, ButtonGroup, Checkbox } from 'view-ui-plus'
+import '../components/app.vue'
 import DropFile from '../components/drop-file.vue'
-import Awaiter from "../components/awaiter.vue"
+import { Awaiter } from '../components/awaiter.vue'
 import hiragana2ChinesePronounce from './hiragana2chinese-pronounce'
-import * as utils from './utils'
-const { romaji, toHiragana, toKatakana, download, types } = utils
+import type * as utils from './utils'
+import { romaji, toHiragana, toKatakana, download, types, Types } from './utils'
 import * as pinyin from './pinyin'
 
 type ReplaceFuncs = Record<string, (str: string) => string>
 const replaceFuncs: ReplaceFuncs = {
+  __proto__: null as any,
   debugPinyin: str => str.replace(pinyin.reg, (m, a = '', b) => `[${a},${b}]`),
   pinyinToRomaji: pinyin.toRomaji,
   pinyinToHiragana: pinyin.toHiragana,
@@ -25,14 +26,15 @@ const replaceFuncs: ReplaceFuncs = {
 }
 const phonemesModeSet = new Set(['hiraganaToChinesePronounce'])
 
-const pinyinjs = import('ipinyinjs/pinyinUtil').then(mod => mod.default)
-pinyinjs.then(pinyinUtil => {
+const pinyinjs = (async () => {
+  const { pinyinUtil } = await import('ipinyinjs/pinyinUtil')
   Object.assign<ReplaceFuncs, ReplaceFuncs>(replaceFuncs, {
     hanziToPinyinTone: str => pinyinUtil.getPinyin(str, ' ', !0, !1),
     hanziToPinyinNumTone: str => pinyin.toNumTone(pinyinUtil.getPinyin(str, ' ', !0, !1)),
     hanziToPinyin: str => pinyinUtil.getPinyin(str, ' ', !1, !1),
   })
-})
+  return pinyinUtil
+})()
 
 export default defineComponent({
   name: 'Lyric Preprocessor',
@@ -63,7 +65,7 @@ export default defineComponent({
         this.length = `[${lyrics.length}]`
         this.lyrics = lyrics.join('\n')
       } catch (e) {
-        iview.Message.error('打开文件失败')
+        Message.error('打开文件失败')
         console.error(e)
         this.close()
       }
@@ -71,12 +73,12 @@ export default defineComponent({
     handleChange(files: File[]) {
       for (const file of files) {
         const m = file.name.match(/\.([^.]+)$/)
-        const type = m != null ? types[m[1] as keyof utils.Types] : null
+        const type = m != null ? types[m[1] as keyof Types] : null
         if (type != null) {
           return this.loadFile(type, file)
         }
       }
-      iview.Message.warning('目前仅支持 musicxml 或 svp 文件')
+      Message.warning('目前仅支持 musicxml 或 svp 文件')
     },
     close() {
       this.file = null

@@ -28,7 +28,8 @@ export const replacerShort = (list: ReplacerList) => {
   return fn
 }
 
-export const romaji = {
+export const romaji = Object.freeze({
+  __proto__: null,
   table,
   reg: romajiReg,
   toHiragana: replacer([[
@@ -45,7 +46,7 @@ export const romaji = {
       return s != null ? s.split(',', 2)[1] : m
     }
   ]])
-}
+})
 const createCharCodeOffset = (reg: RegExp, i: number) => {
   const cb = (m: string) => fromCharCode(charCodeAt.call(m, 0) + i)
   return replacer([[reg, cb]])

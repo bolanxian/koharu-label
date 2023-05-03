@@ -1,6 +1,6 @@
 
 import msgpack from '@ygoe/msgpack'
-import * as z from 'zod'
+import z from 'zod'
 import { Ndarray, refine, TypedArray, TypeNdarray } from './ndarray'
 import { isPlainObject, zodAudioInfo, AudioData } from './utils'
 
@@ -121,7 +121,7 @@ export class PyWorld {
     this.debug(pair)
     return zodFloat64Array.parse(pair.data)
   }
-  async savefig(figlist: Ndarray[], log = true): Promise<Blob> {
+  async savefig(figlist: (TypedArray | Ndarray)[], log = true): Promise<Blob> {
     const pair = await this.fetch('pyworld/savefig', {
       figlist: Array.from(figlist, x => Ndarray.pack(x)), log
     }, {

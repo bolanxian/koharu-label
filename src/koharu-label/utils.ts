@@ -1,6 +1,6 @@
 
-import { z } from "zod"
-import { TypedArray } from "./ndarray"
+import z from 'zod'
+import { TypedArray } from './ndarray'
 
 const { call } = Function.prototype, { toString } = Object.prototype
 export const hasOwn = Object.hasOwn || call.bind({}.hasOwnProperty)
@@ -9,9 +9,9 @@ export const isPlainObject = (data: any): data is Record<string | number | symbo
 
 export const zodAudioInfo = z.object({ format: z.string(), subtype: z.string() })
 export type AudioInfo = z.input<typeof zodAudioInfo>
-export class AudioData<HasInfo extends boolean = false>{
+export class AudioData<HasInfo extends true | false = false>{
   static audioContext: AudioContext
-  static audioTypes = new Set<string | null>(['wav', 'flac', 'mp3', 'ogg', 'm4a', 'mp4'])
+  static audioTypes = new Set<string>(['wav', 'flac', 'mp3', 'ogg', 'm4a', 'mp4'])
   static play(abuf: AudioBuffer): AudioBufferSourceNode {
     if (!this.audioContext) {
       this.audioContext = new AudioContext()
@@ -101,8 +101,7 @@ export const getZeroRanges = (buf: TypedArray): [number, number][] => {
 }
 export const EXT_REG = /\.([^.]+)$/
 export const getFileExt = (file: File): string | null => {
-  const m = file.name.match(EXT_REG)
-  return m && m[1]
+  return file.name.match(EXT_REG)?.[1] ?? null
 }
 export const download = (sequence: string | BlobPart[] | Blob, filename = ''): void => {
   const a = document.createElement('a')

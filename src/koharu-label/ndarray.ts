@@ -1,14 +1,12 @@
 
-import { Ndarray, TypedArray, hasType, isTypedArray, isTypedArrayConstructor } from 'world-wasm'
-import * as WORLD from 'world-wasm'
+import {
+  Ndarray, TypedArray, hasType, isTypedArray, isTypedArrayConstructor,
+  TypedArrayConstructor, TypedArrayValue, TypeNdarray
+} from 'world-wasm/src/ndarray'
 import * as z from 'zod'
 
-import TypedArrayConstructor = WORLD.ndarray.TypedArrayConstructor
-import TypedArrayValue = WORLD.ndarray.TypedArrayValue
-import TypeNdarray = WORLD.ndarray.TypeNdarray
 export type { TypedArrayConstructor, TypedArrayValue, TypeNdarray }
-export { hasType, isTypedArray, isTypedArrayConstructor }
-export { Ndarray, TypedArray }
+export { Ndarray, TypedArray, hasType, isTypedArray, isTypedArrayConstructor }
 
 //from https://github.com/type-challenges/type-challenges/issues/6309
 type UnionToIntersection<T> = (T extends any ? (x: T) => void : never) extends (x: infer U) => void ? U : never

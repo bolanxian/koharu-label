@@ -1,12 +1,12 @@
 /**
  * @createDate 2021-12-9 14:59:59
 */
-import * as Vue from "vue"
-const { defineComponent, createVNode: h, ref, shallowRef: sr } = Vue
-import * as iview from "view-ui-plus"
-const { Row, Col, Card, Icon, Input, Button, ButtonGroup, Radio, RadioGroup, Checkbox, Select, Option } = iview
+import { defineComponent, createVNode, shallowRef as sr } from "vue"
+const h = createVNode
+import { Message, Row, Col, Card, Icon, Input, Button, ButtonGroup, Radio, RadioGroup, Checkbox, Select, Option } from "view-ui-plus"
 import readme from '../assets/readme.md?markdown'
 import { romaji } from '../lyric-transfer/utils'
+import '../components/app.vue'
 import DropFile from '../components/drop-file.vue'
 import { Awaiter, AwaiterState } from '../components/awaiter.vue'
 import HelloWorld from '../components/hello-world.vue'
@@ -36,7 +36,7 @@ export default defineComponent({
   setup(props, ctx) {
     const msg = utils.assertByteorder('<')
     if (msg != null) {
-      iview.Message.error(msg)
+      Message.error(msg)
       console.exception(msg)
     }
     const { backend } = props
@@ -91,6 +91,9 @@ export default defineComponent({
           return `使用 ${world.name} 导入音频文件 ${audio.name}`
         }
       }
+      if (world instanceof PyWorld) {
+        return `PyWorld: ${world.baseURL}`
+      }
       return ''
     }
   },
@@ -104,7 +107,7 @@ export default defineComponent({
       } catch (e) {
         if (!(e instanceof Error)) { throw e }
         if (e.name === 'AbortError') {
-          iview.Message.warning('已取消')
+          Message.warning('已取消')
           this.handle = null
         } else { throw e }
       }
@@ -117,7 +120,7 @@ export default defineComponent({
         } else if (type === 'f0') {
           this.closeAudioFile()
           await this.loadF0File(file)
-        } else if (AudioData.audioTypes.has(type)) {
+        } else if (AudioData.audioTypes.has(type!)) {
           this.closeAudioFile()
           await this.loadAudioFile(file)
         }
@@ -137,7 +140,7 @@ export default defineComponent({
         this.worldResult = result
       } catch (e) {
         this.closeAudioFile()
-        iview.Message.error('导入失败')
+        Message.error('导入失败')
         throw e
       }
     },
@@ -256,7 +259,7 @@ export default defineComponent({
         return
       }
       await utils.saveFile(handle, sequence, name)
-      iview.Message.success('导出成功')
+      Message.success('导出成功')
     }
   },
   render(/*ctx,cache,$props,$setup,$data,$options*/) {
@@ -297,9 +300,7 @@ export default defineComponent({
           ]),
           default: () => h(Awaiter, {
             promise: vm.worldPromise,
-            onSettle(state: AwaiterState, world: World) {
-              if (state === 'fulfilled') { vm.world = world }
-            }
+            onFulfilled(world: World) { vm.world = world }
           }, (state: AwaiterState, world: World) => [
             h(Select, {
               style: 'width: 200px;display: block;margin-bottom: .8em',

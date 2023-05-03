@@ -1,5 +1,5 @@
 
-import * as WORLD from 'world-wasm'
+import * as WORLD from 'world-wasm/src/main'
 import { AudioData } from './utils'
 
 export const isSupport = typeof WebAssembly !== 'undefined'
