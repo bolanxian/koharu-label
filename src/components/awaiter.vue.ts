@@ -1,12 +1,11 @@
 
-import * as Vue from "vue"
-const { defineComponent, shallowRef: sr } = Vue
+import { defineComponent, shallowRef as sr } from 'vue'
 type State = 'empty' | 'pending' | 'fulfilled' | 'rejected'
 export type AwaiterState = State
 export const Awaiter = defineComponent({
   name: 'Awaiter',
   props: { promise: null },
-  emits: { 'settle': null },
+  emits: ['settle', 'empty', 'pending', 'fulfilled', 'rejected'],
   setup() {
     return {
       state: sr<State>('empty'),
@@ -39,6 +38,7 @@ export const Awaiter = defineComponent({
       const { state, value } = this
       this.state = _state; this.value = _value
       this.$emit('settle', _state, _value, state, value)
+      this.$emit(_state, _value)
     }
   },
   render() {
@@ -49,4 +49,3 @@ export const Awaiter = defineComponent({
     return fn != null ? fn(state, value) : null
   }
 })
-export default Awaiter

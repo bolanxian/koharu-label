@@ -3,6 +3,7 @@
     "composite": true,
     "module": "esnext",
     "moduleResolution": "node",
+    "downlevelIteration": true,
     "lib": ["esnext"]
   },
   "include": ["vite.config.ts"]

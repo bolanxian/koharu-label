@@ -15,7 +15,7 @@ declare module '*?table-reg' {
   export default reg
 }
 declare module 'ipinyinjs/pinyinUtil' {
-  export default {
+  export const pinyinUtil: {
     getPinyin(chinese: string, splitter: string, withtone: boolean, polyphone: boolean): string
   }
 }

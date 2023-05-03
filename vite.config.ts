@@ -12,27 +12,70 @@ const ipinyinjs = (): Plugin => {
         return `export ${code}`
       }
       if (id.endsWith('node_modules/ipinyinjs/pinyinUtil.js')) {
-        return `
+        return `\
 import { pinyin_dict_withtone } from 'ipinyinjs/dict/pinyin_dict_withtone'
 var window = { pinyin_dict_withtone }, module
 ${code}
-export default window.pinyinUtil`
+export const { pinyinUtil } = window`
       }
     }
   }
 }
 export default defineConfig({
   base: './',
+  resolve: {
+    extensions: ['.js', '.ts', '.json', '.vue']
+  },
   build: {
     target: 'esnext',
-    modulePreload: { polyfill: false },
+    modulePreload: { polyfill: true },
     cssCodeSplit: false,
-    minify: false
+    minify: false,
+    rollupOptions: {
+      output: {
+        minifyInternalExports: false
+      },
+      plugins: [{
+        name: 'my-preload',
+        renderChunk(code) {
+          if (code.includes('__VITE_IMPORT__')) {
+            return code.replace('__VITE_IMPORT__', 'import')
+          }
+        },
+        transform(code, id) {
+          if (id === '\0vite/preload-helper') {
+            return `\
+export const __vitePreload = (baseModule, deps, importerUrl) => {
+  if (deps?.length > 0) for (const dep of deps) {
+    __VITE_IMPORT__(new URL(dep, importerUrl).href)
+  }
+  return baseModule()
+}`
+          }
+          if (id === '\0vite/modulepreload-polyfill') { return '' }
+        }
+      }]
+    }
   },
   plugins: [
     vue(),
     //splitVendorChunkPlugin(),
     ipinyinjs(),
+    {
+      name: 'view-ui-plus',
+      enforce: 'pre',
+      resolveId(source, importer, options) {
+        if (source === 'view-ui-plus') { return source }
+      },
+      load(id) {
+        if (id === 'view-ui-plus') {
+          return `\
+export * from 'view-ui-plus/src/components/index'
+import pkg from 'view-ui-plus/package.json'
+export const version = pkg.version`
+        }
+      }
+    },
     {
       name: 'markdown',
       enforce: 'pre',
