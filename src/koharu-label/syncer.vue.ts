@@ -1,9 +1,8 @@
 /**
  * @createDate 2022-2-26 16:41:35
 */
-import { defineComponent, createVNode, shallowRef as sr } from "vue"
-const h = createVNode
-import { Message, Row, Col, Card, Icon, Input, Button, ButtonGroup, Select, Option } from "view-ui-plus"
+import { defineComponent, createVNode as h, shallowRef as sr } from 'vue'
+import { Message, Row, Col, Card, Icon, Input, Button, ButtonGroup, Select, Option } from 'view-ui-plus'
 import '../components/app.vue'
 import DropFile from '../components/drop-file.vue'
 import { Awaiter, AwaiterState } from '../components/awaiter.vue'
@@ -16,6 +15,19 @@ import IterableStream from './iterator-stream'
 import * as vox from './vox'
 type World = PyWorld | WorldWasm | null
 const utils2 = {
+  normalizeLab(lab: string | string[]) {
+    const reg = /^(pau|sil)$/
+    let prevLrc = '', prevLine = ''
+    let result = ''
+    for (const [a, b, lrc] of vox.xparseLab(lab)) {
+      if (reg.test(prevLrc) && reg.test(lrc)) { result += '#' }
+      result += prevLine
+      prevLine = `${a} ${b} ${lrc}\n`
+      prevLrc = lrc
+    }
+    result += prevLine
+    return result
+  },
   *xparseLab(lab: string | string[]): Generator<vox.LabLine> {
     for (const [a, b, lrc] of vox.xparseLab(lab)) {
       yield [a / 10000, b / 10000, lrc]
@@ -43,7 +55,7 @@ const utils2 = {
     }
     return [f0, _sp, _ap, fs]
   },
-  async standardizationVvproj(json: any) {
+  async normalizeVvproj(json: any) {
     if (typeof json === 'string' || json instanceof Blob) {
       json = await new Response(json).json()
     }
@@ -85,11 +97,11 @@ const createProcesser = <
 }
 const T = utils.multiLocale({
   'zh-CN': 'zh-Hans-CN',
-  "zh-Hans-CN": true,
-  "ja-Jpan-JP": {},
+  'zh-Hans-CN': true,
+  'ja-Jpan-JP': {},
   'en': 'en-Latn-US',
   'en-US': 'en-Latn-US',
-  "en-Latn-US": {
+  'en-Latn-US': {
     '开始 WORLD 合成': 'start WORLD synthesis',
     '连接 VOICEVOX ENGINE 失败': 'connect VOICEVOX ENGINE failed',
     '开始 WORLD 分析': 'start WORLD analysis',
@@ -176,11 +188,15 @@ const Main = defineComponent({
         if (type === 'lab') { lab = file }
         else if (type === 'f0') { f0 = file }
         else if (type === 'vvproj') {
-          utils.download([await utils2.standardizationVvproj(file)], file.name)
+          utils.download([await utils2.normalizeVvproj(file)], file.name)
           return
         } else if (audioTypes.has(type!)) { audio = file }
       }
-      if (lab != null) { this[audio != null ? 'lab1' : 'lab0'] = `#filename=${lab.name}\n${await lab.text()}` }
+      if (lab != null) {
+        let text = await lab.text()
+        text = audio != null ? text : utils2.normalizeLab(text)
+        this[audio != null ? 'lab1' : 'lab0'] = `#filename=${lab.name}\n${text}`
+      }
       if (f0 != null) { this.f0File = f0 }
       if (audio != null) { await this.loadAudioFile(audio) }
     },
@@ -248,7 +264,7 @@ const Main = defineComponent({
           extra: () => h(Button, {
             disabled: vm.f0File == null,
             onClick: vm.closeF0File,
-          }, () => h(Icon, { type: "md-close" }))
+          }, () => h(Icon, { type: 'md-close' }))
         }),
         h(Card, {
           icon: vm.audio instanceof AudioData ? 'md-document' : '',
@@ -262,7 +278,7 @@ const Main = defineComponent({
             h(Button, {
               disabled: !(vm.audio instanceof AudioData),
               onClick: vm.closeAudioFile
-            }, () => h(Icon, { type: "md-close" }))
+            }, () => h(Icon, { type: 'md-close' }))
           ]),
           default: () => h(Awaiter, {
             promise: vm.worldPromise,
@@ -295,7 +311,7 @@ const Main = defineComponent({
           const loading = state === 'pending', empty = state === 'empty'
           return h(Card, {}, {
             title: () => h('p', {}, [h('span', {}, [
-              fulfilled ? h(Icon, { type: "md-document" }) : null,
+              fulfilled ? h(Icon, { type: 'md-document' }) : null,
               fulfilled ? h('a', { href: output, download: vm.outputAudioName }, vm.outputAudioName) : null,
               rejected ? '合成失败' : null,
               loading ? '合成中' : null,
@@ -331,7 +347,7 @@ const Main = defineComponent({
                 const href = new URL('/setting', vox.getBaseURL()).href
                 return [
                   T('连接 VOICEVOX Engine 失败'), h('br'),
-                  '可能需要前往 ', h('a', { target: "_blank", href }, [href]), ' 设置CORS'
+                  '可能需要前往 ', h('a', { target: '_blank', href }, [href]), ' 设置CORS'
                 ]
               }
             }
@@ -341,7 +357,7 @@ const Main = defineComponent({
       ]),
       h(Col, { xs: 12, lg: 6 }, () => [
         h(Input, {
-          type: "textarea",
+          type: 'textarea',
           autosize: { minRows: 20, maxRows: 1 / 0 },
           modelValue: vm.lab0,
           'onUpdate:modelValue'(value: string) { vm.lab0 = value }
@@ -349,7 +365,7 @@ const Main = defineComponent({
       ]),
       h(Col, { xs: 12, lg: 6 }, () => [
         h(Input, {
-          type: "textarea",
+          type: 'textarea',
           autosize: { minRows: 20, maxRows: 1 / 0 },
           modelValue: vm.lab1,
           'onUpdate:modelValue'(value: string) { vm.lab1 = value }

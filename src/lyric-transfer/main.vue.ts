@@ -1,8 +1,7 @@
 /**
  * @createDate 2021-5-15 19:44:43
 */
-import { defineComponent, createVNode, shallowRef as sr } from 'vue'
-const h = createVNode
+import { defineComponent, createVNode as h, shallowRef as sr } from 'vue'
 import { Message, Row, Col, Affix, Card, Icon, Input, Button, ButtonGroup, Checkbox } from 'view-ui-plus'
 import '../components/app.vue'
 import DropFile from '../components/drop-file.vue'
@@ -128,7 +127,7 @@ export default defineComponent({
     return h(Row, { gutter: 5 }, () => [
       h(Col, { xs: 24, lg: 12 }, () => h(Affix, {}, () => [
         vm.file != null ? h(Card, { icon: 'md-document', title: vm.file.name + vm.length }, {
-          extra: () => h(Button, { onClick: vm.close }, () => h(Icon, { type: "md-close" })),
+          extra: () => h(Button, { onClick: vm.close }, () => h(Icon, { type: 'md-close' })),
           default: () => [
             h(Button, { onClick: vm.reset }, () => '重置'),
             h(Button, { style: { float: 'right' }, onClick: vm.export }, () => '导出')
@@ -179,7 +178,7 @@ export default defineComponent({
       ])),
       h(Col, { xs: 12, lg: 6 }, () => [
         h(Input, {
-          type: "textarea",
+          type: 'textarea',
           autosize: { minRows: 20, maxRows: 1 / 0 },
           placeholder: '输入歌词，或者导入文件',
           modelValue: vm.lyrics,
@@ -188,7 +187,7 @@ export default defineComponent({
       ]),
       h(Col, { xs: 12, lg: 6 }, () => [
         h(Input, {
-          type: "textarea",
+          type: 'textarea',
           autosize: { minRows: 20, maxRows: 1 / 0 },
           placeholder: '结果显示在这里，或者导出文件',
           modelValue: vm.output,

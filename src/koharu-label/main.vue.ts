@@ -1,9 +1,8 @@
 /**
  * @createDate 2021-12-9 14:59:59
 */
-import { defineComponent, createVNode, shallowRef as sr } from "vue"
-const h = createVNode
-import { Message, Row, Col, Card, Icon, Input, Button, ButtonGroup, Radio, RadioGroup, Checkbox, Select, Option } from "view-ui-plus"
+import { defineComponent, createVNode as h, shallowRef as sr } from 'vue'
+import { Message, Row, Col, Card, Icon, Input, Button, ButtonGroup, Radio, RadioGroup, Checkbox, Select, Option } from 'view-ui-plus'
 import readme from '../assets/readme.md?markdown'
 import { romaji } from '../lyric-transfer/utils'
 import '../components/app.vue'
@@ -18,7 +17,7 @@ import SvpFile from './svp-file'
 
 type World = PyWorld | WorldWasm | null
 export default defineComponent({
-  name: "Koharu Label",
+  name: 'Koharu Label',
   props: {
     backend: { type: String, default: '' },
     baseURL: { type: String, default: '/' }
@@ -271,20 +270,20 @@ export default defineComponent({
           title: () => {
             const name = vm.labFile?.name
             return h('p', {}, [
-              name != null ? h('i', { class: "ivu-icon ivu-icon-md-document" }) : null,
+              name != null ? h('i', { class: 'ivu-icon ivu-icon-md-document' }) : null,
               h('span', { title: name ?? '' }, [name ?? '需要 lab 文件'])
             ])
           },
           extra: () => h(Button, {
             disabled: vm.labFile == null,
             onClick: vm.closeLabFile,
-          }, () => h(Icon, { type: "md-close" }))
+          }, () => h(Icon, { type: 'md-close' }))
         }),
         h(Card, {}, {
           title: () => {
             const name = vm.audio?.name
             return h('p', {}, [
-              vm.audioName != null ? h('i', { class: "ivu-icon ivu-icon-md-document" }) : null,
+              vm.audioName != null ? h('i', { class: 'ivu-icon ivu-icon-md-document' }) : null,
               h('span', { title: name ?? '' }, [name ?? '需要 f0 文件'])
             ])
           },
@@ -296,7 +295,7 @@ export default defineComponent({
             h(Button, {
               disabled: vm.audioName == null,
               onClick: vm.closeAudioFile
-            }, () => h(Icon, { type: "md-close" }))
+            }, () => h(Icon, { type: 'md-close' }))
           ]),
           default: () => h(Awaiter, {
             promise: vm.worldPromise,
@@ -366,7 +365,7 @@ export default defineComponent({
         })
       ]),
       h(Col, { xs: 24, lg: 12 }, () => [
-        h(Card, {}, () => h("div", { innerHTML: readme })),
+        h(Card, {}, () => h('div', { innerHTML: readme })),
         import.meta.env.DEV ? h(HelloWorld) : null
       ])
     ])

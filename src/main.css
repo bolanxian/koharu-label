@@ -1,2 +1,38 @@
 @import url('view-ui-plus/dist/styles/viewuiplus.css');
-@import url('./assets/utils.css');
+
+@media(min-width:576px) {
+  .container {
+    max-width: 540px;
+  }
+}
+
+@media(min-width:768px) {
+  .container {
+    max-width: 720px;
+  }
+}
+
+@media(min-width:992px) {
+  .container {
+    max-width: 960px;
+  }
+}
+
+@media(min-width:1200px) {
+  .container {
+    max-width: 1140px;
+  }
+}
+
+html,
+body {
+  height: 100%;
+}
+
+.container {
+  margin: 0 auto;
+}
+
+.ivu-card:hover {
+  z-index: 1;
+}

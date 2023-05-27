@@ -13,10 +13,10 @@ const vowels = 'pau,sil,cl,a,i,u,e,o,N'.split(',')
 const consonants = 'k,ky,g,gy,s,sh,z,t,ts,ty,ch,d,dy,n,ny,h,hy,b,by,f,p,py,m,my,y,r,ry,v,w,j'.split(',')
 export type LabLine = [number, number, string]
 export type Lab = LabLine[]
+export const LAB_REG = /^\s*(\d+)\s+(\d+)\s+([\S\s]*?)\s*$/
 export function* xparseLab(lab: string | string[]): Generator<LabLine> {
-  const reg = /^\s*(\d+)\s+(\d+)\s+([\S\s]*?)\s*$/
   for (const line of typeof lab === 'string' ? lab.split(/\r?\n/) : lab) {
-    const m = line.match(reg)
+    const m = line.match(LAB_REG)
     if (!m) { continue }
     let [_, a, b, lrc] = m
     yield [+a, +b, lrc]

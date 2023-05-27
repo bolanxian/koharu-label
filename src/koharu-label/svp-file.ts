@@ -1,5 +1,5 @@
 
-import YAML from "yaml"
+import YAML from 'yaml'
 import sampleUstx from '../assets/sample.ustx?raw'
 const { trunc, floor } = Math
 const attributes = {

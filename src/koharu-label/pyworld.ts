@@ -34,7 +34,7 @@ export class PyWorld {
       init.method ??= 'POST'
       if (isPlainObject(requestData)) {
         init.headers = new Headers(init.headers)
-        init.headers.set('content-type', "application/x-msgpack")
+        init.headers.set('content-type', 'application/x-msgpack')
         init.body = msgpack.encode(requestData)
       } else {
         init.body = requestData
@@ -48,7 +48,7 @@ export class PyWorld {
       throw new TypeError('Request failed with status code ' + status)
     }
     let data: any
-    if (response.headers.get('content-type') === "application/x-msgpack") {
+    if (response.headers.get('content-type') === 'application/x-msgpack') {
       data = await response.arrayBuffer()
       data = msgpack.decode(new Uint8Array(data))
     }
@@ -83,7 +83,7 @@ export class PyWorld {
   }
   async decodeAudio(blob: Blob) {
     const pair = await this.fetch('soundfile/read', blob, {
-      headers: { "Content-Type": 'application/octet-stream' }
+      headers: { 'Content-Type': 'application/octet-stream' }
     })
     this.debug(pair)
     return zodAudioPacked.parse(pair.data)
