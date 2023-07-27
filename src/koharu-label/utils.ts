@@ -137,7 +137,7 @@ const maximize = typeof Locale === 'function' ? (lang: string) => new Locale(lan
 type MapLang = boolean | string | Record<string, string>
 export const multiLocale = (map: Record<string, MapLang>, langs = navigator.languages) => {
   for (let lang of langs) {
-    let mapLang: void | MapLang
+    let mapLang: undefined | MapLang
     if (hasOwn(map, lang)) {
       mapLang = map[lang]
     } else if (hasOwn(map, lang = maximize(lang))) {

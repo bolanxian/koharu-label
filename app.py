@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 import sys,os
-sys.path.insert(0,os.path.join(os.path.dirname(__file__),'site-packages'))
-
 from flask import Flask,request,jsonify,render_template
 app=Flask(__name__,template_folder='./dist',static_folder='./dist',static_url_path='/')
 max_content_length=128*1024*1024
@@ -199,7 +197,7 @@ def savefig():
       'Content-Type':'image/png'
     }
 
-if __name__=='__main__':
+def main():
     port=6701
     url='http://127.0.0.1:'+str(port)
     def testWindows():
@@ -226,3 +224,6 @@ if __name__=='__main__':
         thread=Thread(target=testWindows,args=[])
         thread.start()
     app.run(port=port)
+
+if __name__=='__main__':
+    main()

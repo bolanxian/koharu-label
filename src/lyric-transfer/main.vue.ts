@@ -126,13 +126,16 @@ export default defineComponent({
     const vm = this
     return h(Row, { gutter: 5 }, () => [
       h(Col, { xs: 24, lg: 12 }, () => h(Affix, {}, () => [
+        vm.file != null
+          ? h(DropFile, { global: true, style: 'display:none' })
+          : h(DropFile, { global: true, onChange: vm.handleChange }),
         vm.file != null ? h(Card, { icon: 'md-document', title: vm.file.name + vm.length }, {
           extra: () => h(Button, { onClick: vm.close }, () => h(Icon, { type: 'md-close' })),
           default: () => [
             h(Button, { onClick: vm.reset }, () => '重置'),
             h(Button, { style: { float: 'right' }, onClick: vm.export }, () => '导出')
           ]
-        }) : h(DropFile, { global: true, onChange: vm.handleChange }),
+        }) : null,
         h(Card, { title: '转换', style: { 'margin-top': '20px' } }, {
           extra: () => h(Button, { onClick: vm.reverseCopy }, () => '←复制'),
           default: () => h('form', { action: 'about:blank', onSubmit: vm.handleSubmit }, [
@@ -140,7 +143,9 @@ export default defineComponent({
               modelValue: vm.phonemesMode,
               'onUpdate:modelValue'(val: boolean) { vm.phonemesMode = val }
             }, () => '音素模式'), h('br'),
-            h(Button, { 'html-type': 'submit', 'data-name': 'pinyinToRomaji' }, () => '拼音→罗马字'), h('br'),
+            h(ButtonGroup, { style: { 'margin-top': '10px' } }, () => [
+              h(Button, { 'html-type': 'submit', 'data-name': 'pinyinToRomaji' }, () => '拼音→罗马字'),
+            ]), h('br'),
             h(ButtonGroup, { style: { 'margin-top': '10px' } }, () => [
               h(Button, { 'html-type': 'submit', 'data-name': 'pinyinToHiragana' }, () => '拼音→平假名'),
               h(Button, { 'html-type': 'submit', 'data-name': 'romajiToHiragana' }, () => '罗马字→平假名'),

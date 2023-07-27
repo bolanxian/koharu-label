@@ -78,10 +78,7 @@ export default defineComponent({
     },
     audioMsg(): string {
       const { world, audio, worldResult } = this
-      if (world == null) {
-        if (this.worldPromise != null) { return `正在加载 ${this.worldType}` }
-        return ''
-      }
+      if (world == null) { return '' }
       if (audio != null) {
         if (audio instanceof AudioData) {
           return audio.getInfo()
@@ -313,7 +310,11 @@ export default defineComponent({
               h(Option, { value: 'World-Wasm', disabled: !isSupportWasm }, () => 'World-Wasm'),
               h(Option, { value: 'PyWorld' }, () => 'PyWorld')
             ]),
-            vm.audioMsg
+            state !== 'pending'
+              ? state !== 'rejected'
+                ? vm.audioMsg
+                : `加载失败 ${this.worldType}`
+              : `正在加载 ${this.worldType}`
           ])
         }),
         h(Card, {

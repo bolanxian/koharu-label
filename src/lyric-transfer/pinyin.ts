@@ -2,10 +2,10 @@
 import * as utils from './utils'
 const { replacer, replacerShort, romaji } = utils
 const map0 = new Map(Object.entries({
-  'ar': 'a',
-  'er': 'e',
+  'e': 'oa',
+  'er': 'oa',
   'ri': 'i',
-  'me': 'mo',
+  'me': 'moa',
   'nv': 'nui',
   'nve': 'nue',
   'lv': 'rui',
@@ -14,7 +14,7 @@ const map0 = new Map(Object.entries({
 export const list = replacerShort([
   [/^(zh|ch|sh|[zcs])i$/, (m, $1) => `${mapc.get($1) ?? $1}u`],
   [/^(zh|ch|sh|[dtnlzcsgkhry])ou$/, (m, $1) => `${mapc.get($1) ?? $1}o`],
-  [/^(ch|sh|[tnlgkhzc])e$/, (m, $1) => `${mapc.get($1) ?? $1}o`],
+  [/^(zh|ch|sh|[dtnlzcsgkhr])e$/, (m, $1) => `${mapc.get($1) ?? $1}oa`],
   [/^y[uv](e|n|an)?$/, (m, $1) => `yu${$1 || 'i'}`],
   [/^j[uv](e|n|an)?$/, (m, $1) => `ju${$1 || 'i'}`],
   [/^q[uv](e|n|an)?$/, (m, $1) => `chu${$1 || 'i'}`],

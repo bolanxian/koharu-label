@@ -17,16 +17,16 @@ interface Note {
   detune: number
   attributes?: typeof attributes
 }
+export const generateUUID = crypto.randomUUID?.bind(crypto) ?? ((): string => {
+  crypto.getRandomValues(randBuf)
+  const a = Array.from(randBuf, n => n.toString(16).padStart(4, '0'))
+  return [a[0] + a[1], a[2], a[3], a[4], a[5] + a[6] + a[7]].join('-')
+})
 export default class SvpFile {
   static createNote(onset: number, duration: number, lyrics: string, pitch: number): Note {
     return {
       onset, duration, lyrics, phonemes: "", pitch, "detune": 0, attributes
     }
-  }
-  static generateUUID(): string {
-    crypto.getRandomValues(randBuf)
-    const a = Array.from(randBuf, n => n.toString(16).padStart(4, '0'))
-    return [a[0] + a[1], a[2], a[3], a[4], a[5] + a[6] + a[7]].join('-')
   }
   readonly bpm: number
   readonly offsetRatio: number
@@ -123,9 +123,10 @@ export default class SvpFile {
       const note = notes[i]
       if (!consonants.includes(note.lyrics)) { continue }
       const next = notes[i + 1]
+      if (note.onset + note.duration !== next.onset) { continue }
       if (consonants.includes(next.lyrics)) { continue }
-      const prev = notes[i - 1]
       next.lyrics = note.phonemes + next.lyrics
+      const prev = notes[i - 1]
       if (prev?.onset + prev?.duration === note.onset) {
         prev.duration += note.duration
       }
@@ -168,8 +169,8 @@ export default class SvpFile {
     }
   }
   toJSON(name?: string) {
-    const mainId = SvpFile.generateUUID()
-    const libId = SvpFile.generateUUID()
+    const mainId = generateUUID()
+    const libId = generateUUID()
     const emptyParam = { "mode": "cubic", "points": [] }
     return {
       "version": 119,
