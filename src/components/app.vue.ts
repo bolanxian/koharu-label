@@ -1,49 +1,50 @@
 
-import { defineComponent, createVNode as h, shallowRef as sr, onUnmounted } from 'vue'
-import { Icon, Spin } from 'view-ui-plus'
+import { defineComponent, createVNode as h, shallowRef as sr, onUnmounted, getCurrentInstance } from 'vue'
+import { Spin } from 'view-ui-plus'
 import { Awaiter, AwaiterState } from './awaiter.vue'
-import './drop-file.vue'
-import { getModule } from '../main'
-
-export { createApp } from 'vue'
-export { ButtonGroup, Card, Input, Message } from 'view-ui-plus'
+import type { Module } from './apps'
+let APPS: Promise<typeof import('./apps')>
 
 const handleFulfilled = (module: Module) => {
-  if (module != null) { document.title = module.default.name }
+  if (module != null) { document.title = module.name }
 }
-const renderEmpty = () => null
-export type getModule = ReturnType<typeof getModule>
-export type Module = Awaited<getModule>
+const getModuleAsync = async (hash = location.hash) => {
+  if (import.meta.env.DEV) switch (hash) {
+    case '#error': return Promise.reject(hash)
+    case '#loading': return new Promise<never>(() => { })
+  }
+  APPS ??= import('./apps')
+  return (await APPS).getModule(hash)
+}
+
 export const App = defineComponent({
-  props: { firstModule: null },
   setup(props, ctx) {
-    const module = sr<getModule>(props.firstModule)
-    const handleHashchange = (e?: HashChangeEvent) => {
-      module.value = getModule()
+    const module = sr(getModuleAsync())
+    const handleHashchange = (e: HashChangeEvent) => {
+      module.value = getModuleAsync()
     }
     window.addEventListener('hashchange', handleHashchange)
     onUnmounted(() => window.removeEventListener('hashchange', handleHashchange))
-    return { module, awaiterSlots: null as any }
-  },
-  render() {
-    return h(Awaiter, { promise: this.module, onFulfilled: handleFulfilled }, this.awaiterSlots ??= {
-      fulfilled: (module: Module) => {
-        if (module == null) { return renderEmpty() }
-        const vnode = h(module.default, this.$attrs, this.$slots)
-        vnode.ref = this.$.vnode.ref
-        return vnode
+    const $ = getCurrentInstance()!
+    let awaiterSlots
+    return () => h(Awaiter, { promise: module.value, onFulfilled: handleFulfilled }, awaiterSlots ??= {
+      default: (state: AwaiterState, module: Module) => {
+        let vnode = null
+        if (state === 'fulfilled' && module != null) {
+          vnode = h(module, $.attrs, $.slots)
+          vnode.ref = $.vnode.ref
+        }
+        return [
+          h(Spin, { show: state === 'pending', size: 'large', fix: true }),
+          vnode
+        ]
       },
-      empty: renderEmpty,
-      default: (state: AwaiterState) => {
-        const isRejected = state === 'rejected'
-        return h(Spin, { style: isRejected ? 'color:#F00' : null, fix: true }, () => [
-          h(Icon, {
-            type: 'ios-loading', size: 80, class: 'ivu-load-loop',
-            style: isRejected ? 'animation-play-state:paused' : null
-          }),
-          h('div', { style: 'margin: 20px' }, [isRejected ? '加载失败' : '加载中'])
-        ])
-      }
+      rejected: () => h('div', { class: 'ivu-loading-bar', style: 'height: 2px' }, [
+        h('div', {
+          class: 'ivu-loading-bar-inner ivu-loading-bar-inner-failed-color-error',
+          style: 'height: 2px'
+        })
+      ])
     })
   }
 })

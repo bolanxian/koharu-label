@@ -11,8 +11,14 @@ declare module '*?markdown' {
   export default html
 }
 declare module '*?table-reg' {
-  const reg: RegExp
-  export default reg
+  const table: Record<string, string>
+  export default table
+  export const reg: RegExp
+}
+declare module '*?table-reg&reverse' {
+  const table: Record<string, string>
+  export default table
+  export const reg: RegExp
 }
 declare module 'ipinyinjs/pinyinUtil' {
   export const pinyinUtil: {
@@ -29,13 +35,5 @@ interface FileSystemFileHandle {
   createWritable(): Promise<FileSystemWritableFileStream>
 }
 interface FileSystemWritableFileStream extends WritableStream<Uint8Array> {
-  seek(): Promise<void>
-  truncate(): Promise<void>
   write(data: BlobPart): Promise<void>
-}
-interface ImportMetaEnv {
-
-}
-interface ImportMeta {
-  readonly env: ImportMetaEnv
 }

@@ -2,10 +2,15 @@
 import z from 'zod'
 import { TypedArray } from './ndarray'
 
-const { call } = Function.prototype, { toString } = Object.prototype
-export const hasOwn = Object.hasOwn || call.bind({}.hasOwnProperty)
-const plainObjects = new Set(['[object Object]', '[object Array]'])
-export const isPlainObject = (data: any): data is Record<string | number | symbol, any> => plainObjects.has(toString.call(data))
+const { apply } = Reflect
+const { call: _call, bind: _bind } = Function.prototype
+const objectProto = Object.prototype
+export const hasOwn = Object.hasOwn ?? apply(_bind, _call, [objectProto.hasOwnProperty])
+export const getString = apply(_bind, _call, [objectProto.toString])
+export const isPlainObject = (o: any): o is Record<string | number | symbol, any> => {
+  o = getString(o)
+  return o === '[object Object]' || o === '[object Array]'
+}
 
 export const zodAudioInfo = z.object({ format: z.string(), subtype: z.string() })
 export type AudioInfo = z.input<typeof zodAudioInfo>
@@ -133,27 +138,19 @@ export const saveFile = async (handle: FileSystemDirectoryHandle, sequence: Blob
   }
 }
 const Locale: void | typeof Intl.Locale = window?.Intl?.Locale ?? null
-const maximize = typeof Locale === 'function' ? (lang: string) => new Locale(lang).maximize().baseName : String
-type MapLang = boolean | string | Record<string, string>
-export const multiLocale = (map: Record<string, MapLang>, langs = navigator.languages) => {
-  for (let lang of langs) {
-    let mapLang: undefined | MapLang
-    if (hasOwn(map, lang)) {
-      mapLang = map[lang]
-    } else if (hasOwn(map, lang = maximize(lang))) {
-      mapLang = map[lang]
-    }
-
-    if (typeof mapLang === 'string') {
-      mapLang = map[mapLang]
-    }
-    if (mapLang === true) {
-      return String
-    } else if (typeof mapLang === 'object') {
-      const map = mapLang
-      return (msg: string) => hasOwn(map, msg) ? map[msg] : msg
-    }
+const minimize = typeof Locale === 'function' ? (lang: string) => new Locale(lang).language : String
+function* xlocaler(defaultLocale?: string, locales = navigator.languages) {
+  yield* locales
+  for (const locale of locales) { yield minimize(locale) }
+  if (defaultLocale != null) { yield defaultLocale }
+}
+export const localer = <T extends Record<string, any>>(
+  getMap: (locale: string) => undefined | T, defaultLocale = 'zh-Hans', locales = navigator.languages
+): (<K extends string>(msg: K) => K extends keyof T ? T[K] : '') => {
+  for (const locale of xlocaler(defaultLocale, locales)) {
+    const map = getMap(locale)
+    if (map == null) { continue }
+    return <K extends string>(msg: K) => (hasOwn(map, msg) ? map[msg] : '') as K extends keyof T ? T[K] : ''
   }
-  return String
-  //throw new RangeError(`invalid language tag: ${JSON.stringify(langs)}`)
+  throw new RangeError(`invalid language tags: ${JSON.stringify(locales)}`)
 }

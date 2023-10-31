@@ -3,12 +3,11 @@
 */
 import { defineComponent, createVNode as h, shallowRef as sr } from 'vue'
 import { Message, Row, Col, Card, Icon, Input, Button, ButtonGroup, Radio, RadioGroup, Checkbox, Select, Option } from 'view-ui-plus'
+
 import readme from '../assets/readme.md?markdown'
 import { romaji } from '../lyric-transfer/utils'
-import '../components/app.vue'
 import DropFile from '../components/drop-file.vue'
 import { Awaiter, AwaiterState } from '../components/awaiter.vue'
-import HelloWorld from '../components/hello-world.vue'
 import * as utils from './utils'
 import { AudioData } from './utils'
 import { PyworldDio, PyWorld } from './pyworld'
@@ -366,8 +365,7 @@ export default defineComponent({
         })
       ]),
       h(Col, { xs: 24, lg: 12 }, () => [
-        h(Card, {}, () => h('div', { innerHTML: readme })),
-        import.meta.env.DEV ? h(HelloWorld) : null
+        h(Card, {}, () => h('div', { innerHTML: readme }))
       ])
     ])
   }

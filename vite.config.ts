@@ -1,7 +1,10 @@
-import { defineConfig, splitVendorChunkPlugin, Plugin, createFilter } from 'vite'
+
+import type { UserConfig, Plugin } from 'vite'
+import { defineConfig, createFilter } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { marked } from 'marked'
 // https://vitejs.dev/config/
+
 const ipinyinjs = (): Plugin => {
   const filter = createFilter(['node_modules/ipinyinjs/**'])
   return {
@@ -21,12 +24,80 @@ export const { pinyinUtil } = window`
     }
   }
 }
+
+const tableReg = (): Plugin => {
+  const transform = (code: string, transformTable?: (table: any) => any) => {
+    let table = JSON.parse(code.slice(code.indexOf('{'), code.lastIndexOf('}') + 1))
+    table = transformTable?.(table) ?? table
+    let keys = Object.keys(table)
+    keys.sort((a, b) => b.length - a.length)
+    keys = keys.map(s => s.replace(/\\/g, '\\\\'))
+    return `\
+export default ${JSON.stringify(table)}
+export const reg = RegExp(${JSON.stringify(keys.join('|'))}, 'g')
+`
+  }
+  function* xreverse(entries: [string, unknown][]) {
+    for (const [key, values] of entries) {
+      for (const value of String(values).split(',')) {
+        yield [value, key]
+      }
+    }
+  }
+  return {
+    name: 'table-reg',
+    enforce: 'pre',
+    transform(code, id) {
+      if (id.endsWith('?table-reg')) {
+        return transform(code)
+      }
+      if (id.endsWith('?table-reg&reverse')) {
+        return transform(code, (table) => {
+          return Object.fromEntries(xreverse(Object.entries(table)))
+        })
+      }
+    }
+  }
+}
+
+const externalAssets = ((): {
+  renderBuiltUrl: UserConfig['experimental']['renderBuiltUrl']
+  plugin: Plugin
+} => {
+  const reg = /\/(ionicons)-[\da-f]{8}\.((?!woff2)\S+)$/
+  return {
+    renderBuiltUrl(fileName, { type, hostId, hostType }) {
+      if (hostType === 'css') {
+        const m = fileName.match(reg)
+        if (m != null) { return `data:text/plain,${m[1]}.${m[2]}` }
+      }
+      return { relative: true }
+    },
+    plugin: {
+      name: 'external-assets',
+      generateBundle(options, bundle) {
+        for (const fileName of Object.keys(bundle)) {
+          const m = fileName.match(reg)
+          if (m != null) { delete bundle[fileName] }
+        }
+      }
+    }
+  }
+})()
+
 export default defineConfig({
+  appType: 'mpa',
+  root: 'src',
   base: './',
+  publicDir: '../public',
+  cacheDir: '../node_modules/.vite',
   resolve: {
     extensions: ['.js', '.ts', '.json', '.vue']
   },
+  experimental: { renderBuiltUrl: externalAssets.renderBuiltUrl },
   build: {
+    outDir: '../dist',
+    emptyOutDir: false,
     target: 'esnext',
     modulePreload: { polyfill: true },
     cssCodeSplit: false,
@@ -37,30 +108,26 @@ export default defineConfig({
       },
       plugins: [{
         name: 'my-preload',
-        renderChunk(code) {
-          if (code.includes('__VITE_IMPORT__')) {
-            return code.replace('__VITE_IMPORT__', 'import')
+        transform: {
+          order: 'post',
+          handler(code, id) {
+            if (id === '\0vite/preload-helper') {
+              return `export const __vitePreload = ''`
+            }
+            if (id === '\0vite/modulepreload-polyfill') { return '' }
+            if (code.includes('__vitePreload(')) {
+              return code.replace(/__vitePreload\(\(\) => ([^,]+),__VITE_IS_MODERN__\?"__VITE_PRELOAD__"\:void 0,import\.meta\.url\)/, '$1')
+            }
           }
-        },
-        transform(code, id) {
-          if (id === '\0vite/preload-helper') {
-            return `\
-export const __vitePreload = (baseModule, deps, importerUrl) => {
-  if (deps?.length > 0) for (const dep of deps) {
-    __VITE_IMPORT__(new URL(dep, importerUrl).href)
-  }
-  return baseModule()
-}`
-          }
-          if (id === '\0vite/modulepreload-polyfill') { return '' }
         }
       }]
     }
   },
   plugins: [
     vue(),
-    //splitVendorChunkPlugin(),
     ipinyinjs(),
+    tableReg(),
+    externalAssets.plugin,
     {
       name: 'view-ui-plus',
       enforce: 'pre',
@@ -87,23 +154,20 @@ export const version = pkg.version`
       }
     },
     {
-      name: 'table-reg',
-      enforce: 'pre',
-      transform(code, id) {
-        if (id.endsWith('?table-reg')) {
-          const table = JSON.parse(code.slice(code.indexOf('{'), code.lastIndexOf('}') + 1))
-          let keys = Object.keys(table)
-          keys.sort((a, b) => b.length - a.length)
-          keys = keys.map(s => s.replace(/\\/g, '\\\\'))
-          return `export default RegExp(${JSON.stringify(keys.join('|'))}, 'g')`
-        }
-      }
-    },
-    {
-      name: 'node-wav',
-      transform(code, id) {
-        if (id.endsWith('node_modules/node-wav/index.js')) {
-          return `const Buffer=Object\n${code}`
+      name: 'html-transform',
+      transformIndexHtml(html, { chunk, bundle }) {
+        if (chunk == null || bundle == null) { return }
+        return {
+          html: html.replace(/(?<=\<script type="module"\s+)crossorigin\s+/g, ''),
+          tags: [...function* () {
+            for (const href of chunk.dynamicImports) {
+              yield {
+                tag: 'link',
+                attrs: { rel: 'modulepreload', href: `./${href}` },
+                injectTo: 'head' as 'head'
+              }
+            }
+          }()]
         }
       }
     }

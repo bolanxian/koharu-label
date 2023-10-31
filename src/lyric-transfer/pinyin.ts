@@ -15,6 +15,7 @@ export const list = replacerShort([
   [/^(zh|ch|sh|[zcs])i$/, (m, $1) => `${mapc.get($1) ?? $1}u`],
   [/^(zh|ch|sh|[dtnlzcsgkhry])ou$/, (m, $1) => `${mapc.get($1) ?? $1}o`],
   [/^(zh|ch|sh|[dtnlzcsgkhr])e$/, (m, $1) => `${mapc.get($1) ?? $1}oa`],
+  [/^(zh|ch|sh|[bpmfdtnlzcsgkhryw])eng?$/, (m, $1) => `${mapc.get($1) ?? $1}on`],
   [/^y[uv](e|n|an)?$/, (m, $1) => `yu${$1 || 'i'}`],
   [/^j[uv](e|n|an)?$/, (m, $1) => `ju${$1 || 'i'}`],
   [/^q[uv](e|n|an)?$/, (m, $1) => `chu${$1 || 'i'}`],

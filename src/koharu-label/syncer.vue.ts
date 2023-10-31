@@ -3,7 +3,7 @@
 */
 import { defineComponent, createVNode as h, shallowRef as sr } from 'vue'
 import { Message, Row, Col, Card, Icon, Input, Button, ButtonGroup, Select, Option } from 'view-ui-plus'
-import '../components/app.vue'
+
 import DropFile from '../components/drop-file.vue'
 import { Awaiter, AwaiterState } from '../components/awaiter.vue'
 import * as utils from './utils'
@@ -13,7 +13,59 @@ import { PyworldAll, PyWorld } from './pyworld'
 import { WorldWasm, isSupport as isSupportWasm } from './world-wasm'
 import IterableStream from './iterator-stream'
 import * as vox from './vox'
+
 type World = PyWorld | WorldWasm | null
+const { apply } = Reflect
+const M = utils.localer((locale) => {
+  switch (locale) {
+    case 'zh-CN': case 'zh-Hans': return {
+      loading: '加载中',
+      world_syn: '开始 WORLD 合成',
+      vox_syn: '开始 VOICEVOX 合成',
+      conn_vox_fail: '连接 VOICEVOX ENGINE 失败',
+      world_analysis: '开始 WORLD 分析',
+      syn_input: '输入\u3000角色ID，最小元音长度，最大元音长度，音高：',
+      syn_fail: '合成失败',
+      syn_pend: '合成中',
+      syn_v: '合成',
+      syn: '合成',
+      export: '导出',
+      version_: '版本：',
+      refresh: '刷新',
+      set_cors0: '可能需要前往 ',
+      set_cors1: ' 设置CORS'
+    }
+    case 'en-US': case 'en': return {
+      loading: 'Loading',
+      world_syn: 'Start WORLD synthesis',
+      vox_syn: 'Start VOICEVOX synthesis',
+      conn_vox_fail: 'Connect VOICEVOX ENGINE failed',
+      world_analysis: 'Start WORLD analysis',
+      syn_input: 'Input speaker id,min vowel length,max vowel length,pitch:',
+      syn_fail: 'Synthesis failed',
+      syn_pend: 'In synthesis',
+      syn_v: 'Synthesize',
+      syn: 'Synthesis',
+      export: 'export',
+      version_: 'Version: ',
+      refresh: 'Refresh',
+      set_cors0: 'You may need to go to ',
+      set_cors1: ' to set CORS'
+    }
+  }
+})
+const T = utils.localer<{
+  require: (type: string) => string
+}>((locale) => {
+  switch (locale) {
+    case 'zh-CN': case 'zh-Hans': return {
+      require: (type) => `需要 ${type} 文件`
+    }
+    case 'en-US': case 'en': return {
+      require: (type) => `Require ${type} file`
+    }
+  }
+})
 const utils2 = {
   normalizeLab(lab: string | string[]) {
     const reg = /^(pau|sil)$/
@@ -39,6 +91,7 @@ const utils2 = {
     const shape: [number, number] = [f0.length, sp[0].length]
     const _sp = Ndarray.create('float64', shape)
     const _ap = Ndarray.create('float64', shape)
+    _sp.buffer.fill(1e-16)
     _ap.buffer.fill(1 - 1e-16)
     const it = utils2.xparseLab(lab1), { trunc } = Math
     for (const [begin0, end0/*,lrc0*/] of utils2.xparseLab(lab0)) {
@@ -81,33 +134,20 @@ const createProcesser = <
     if (this.process != null) { return }
     this.process = name
     try {
-      const promise = this.output = cb.apply(this, args).then((data): string | null => {
+      const promise = this.output = apply(cb, this, args).then((data): string | null => {
         if (data instanceof Blob) { return URL.createObjectURL(data) }
         if (typeof data === 'function') { setTimeout(data); return null }
         return this.output = null
       })
       await promise
     } catch (e) {
-      Message.error('合成失败')
+      Message.error(M('syn_fail'))
       throw e
     } finally {
       this.process = null
     }
   }
 }
-const T = utils.multiLocale({
-  'zh-CN': 'zh-Hans-CN',
-  'zh-Hans-CN': true,
-  'ja-Jpan-JP': {},
-  'en': 'en-Latn-US',
-  'en-US': 'en-Latn-US',
-  'en-Latn-US': {
-    '开始 WORLD 合成': 'start WORLD synthesis',
-    '连接 VOICEVOX ENGINE 失败': 'connect VOICEVOX ENGINE failed',
-    '开始 WORLD 分析': 'start WORLD analysis',
-    '输入　角色ID，最小元音长度，最大元音长度，音高：': 'Input speaker id,min vowel length,max vowel length,pitch:\n'
-  },
-})
 const getVoxInfo = async () => {
   const info = await vox.getInfo()
   const speakers = await vox.getSpeakers()
@@ -259,7 +299,7 @@ const Main = defineComponent({
         h(DropFile, { global: true, onChange: vm.handleChange }),
         h(Card, {
           icon: vm.f0File != null ? 'md-document' : '',
-          title: vm.f0File?.name ?? '需要 f0 文件'
+          title: vm.f0File?.name ?? T('require')('f0')
         }, {
           extra: () => h(Button, {
             disabled: vm.f0File == null,
@@ -268,13 +308,13 @@ const Main = defineComponent({
         }),
         h(Card, {
           icon: vm.audio instanceof AudioData ? 'md-document' : '',
-          title: vm.audio != null ? vm.audio instanceof AudioData ? vm.audio.name : '加载中' : '需要 wav 文件'
+          title: vm.audio != null ? vm.audio instanceof AudioData ? vm.audio.name : M('loading') : T('require')('wav')
         }, {
           extra: () => h(ButtonGroup, {}, () => [
             h(Button, {
               disabled: !(vm.audio instanceof AudioData),
               onClick: vm.exportOriginAudio
-            }, () => '导出'),
+            }, () => M('export')),
             h(Button, {
               disabled: !(vm.audio instanceof AudioData),
               onClick: vm.closeAudioFile
@@ -313,13 +353,13 @@ const Main = defineComponent({
             title: () => h('p', {}, [h('span', {}, [
               fulfilled ? h(Icon, { type: 'md-document' }) : null,
               fulfilled ? h('a', { href: output, download: vm.outputAudioName }, vm.outputAudioName) : null,
-              rejected ? '合成失败' : null,
-              loading ? '合成中' : null,
-              empty ? '合成' : null
+              rejected ? M('syn_fail') : null,
+              loading ? M('syn_pend') : null,
+              empty ? M('syn') : null
             ])]),
             extra: () => h(Button, {
               loading, disabled: vm.f0File == null, onClick: vm.handleSynthesize
-            }, () => '合成'),
+            }, () => M('syn_v')),
             default: () => [
               fulfilled ? h('audio', { controls: '', src: output, style: { width: '100%' } }) : null,
               loading ? h('div', {}, [vm.info]) : null
@@ -335,19 +375,19 @@ const Main = defineComponent({
             title: () => [
               h('p', {}, [h('span', {}, [fulfilled ? info.brand_name : 'VOICEVOX'])]),
               fulfilled ? h('div', { class: 'ivu-cell-label' }, [info.name]) : null,
-              fulfilled ? h('div', { class: 'ivu-cell-label' }, [`版本：${info.version}`]) : null
+              fulfilled ? h('div', { class: 'ivu-cell-label' }, [`${M('version_')}${info.version}`]) : null
             ],
             extra: () => h(ButtonGroup, {}, () => [
               h(Button, { loading, onClick: vm.setVoxBaseURL }, () => 'URL'),
-              h(Button, { loading, onClick: vm.getVoxInfo }, () => '刷新')
+              h(Button, { disabled: loading, onClick: vm.getVoxInfo }, () => M('refresh'))
             ]),
             default: () => {
               if (fulfilled) { return [h('pre', { innerText: info.speakers })] }
               if (rejected) {
                 const href = new URL('/setting', vox.getBaseURL()).href
                 return [
-                  T('连接 VOICEVOX Engine 失败'), h('br'),
-                  '可能需要前往 ', h('a', { target: '_blank', href }, [href]), ' 设置CORS'
+                  M('conn_vox_fail'), h('br'),
+                  M('set_cors0'), h('a', { target: '_blank', href }, [href]), M('set_cors1')
                 ]
               }
             }
@@ -384,7 +424,7 @@ Object.assign(Main.methods as any, {
       return vm.handleSynthesizeVox
     }
     const { fs, info } = audio, { sp, ap } = worldResult
-    vm.log(T('开始 WORLD 合成'))
+    vm.log(M('world_syn'))
     const f0 = new Float64Array(await f0File.arrayBuffer())
     const result = await world.synthesize(...utils2.labelSync(lab0, lab1, f0, sp, ap, fs))
     return await world.encodeAudio(result, fs, info?.format, info?.subtype)
@@ -402,7 +442,7 @@ Object.assign(Main.methods as any, {
     if (world == null || f0File == null) { return }
     vm.log()
     let { promptValue } = vm
-    const msg = T('输入　角色ID，最小元音长度，最大元音长度，音高：')
+    const msg = M('syn_input')
     if (promptValue == null) { promptValue = '8,0.05,0.15,5.8' }
     promptValue = prompt(msg, promptValue)
     if (promptValue == null) { return }
@@ -421,7 +461,7 @@ Object.assign(Main.methods as any, {
         synthesis = (id: string, query: any) => vox.synthesis_morphing(a, b, c, query)
       }
       for await (const [i, query] of stream) {
-        const msg = `${T('开始 VOICEVOX 合成')} (${i + 1}/${querys.length})`
+        const msg = `${M('vox_syn')} (${i + 1}/${querys.length})`
         vm.log(msg)
         dev && console.log(`${msg} start`)
         const file = await synthesis(id, query)
@@ -452,7 +492,7 @@ Object.assign(Main.methods as any, {
       info: utils.AudioInfo | null, fs: number
     }
     const audioBuffer = await new Response(stream.readable).arrayBuffer()
-    vm.log(T('开始 WORLD 分析'))
+    vm.log(M('world_analysis'))
     const audio = new AudioData<boolean>({
       data: new init!.Ctor(audioBuffer), fs: init!.fs, info: init!.info
     })

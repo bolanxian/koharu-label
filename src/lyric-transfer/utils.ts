@@ -1,7 +1,8 @@
 
 import YAML from 'yaml'
-import table from './table'
-import romajiReg from './table?table-reg'
+import table, { reg as romajiReg } from './table?table-reg'
+import reverseTable, { reg as reverseRomajiReg } from './table?table-reg&reverse'
+
 const { fromCharCode } = String
 const { charCodeAt, replace } = String.prototype
 type ReplacerList = [RegExp, string | ((substring: string, ...args: any[]) => string)][]
@@ -29,20 +30,25 @@ export const replacerShort = (list: ReplacerList) => {
 }
 
 export const romaji = Object.freeze({
-  __proto__: null,
+  __proto__: null as never,
   table,
   reg: romajiReg,
+  fromReg: reverseRomajiReg,
+  from: replacer([[
+    reverseRomajiReg,
+    m => reverseTable[m] ?? m
+  ]]),
   toHiragana: replacer([[
     romajiReg,
     m => {
-      const s = table[m as keyof typeof table]
+      const s = table[m]
       return s != null ? s.split(',', 1)[0] : m
     }
   ]]),
   toKatakana: replacer([[
     romajiReg,
     m => {
-      const s = table[m as keyof typeof table]
+      const s = table[m]
       return s != null ? s.split(',', 2)[1] : m
     }
   ]])

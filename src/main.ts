@@ -1,26 +1,10 @@
 
-export const getModule = (hash = location.hash) => {
-  if (import.meta.env.DEV) switch (hash) {
-    case '#error': return Promise.reject(hash)
-    case '#loading': return new Promise<never>(() => { })
-  }
-  switch (hash) {
-    case '#syncer': return import('./koharu-label/syncer.vue')
-    case '#lyric': return import('./lyric-transfer/main.vue')
-    case '': return import('./koharu-label/main.vue')
-  }
-  return null
-}
+import { createApp } from 'vue'
+import { App } from './components/app.vue'
 
-const getFirstModule = async <T>(APP: Promise<T>, hash = location.hash) => {
-  let timer
-  await Promise.any([APP, new Promise(ok => { timer = setTimeout(ok, 1000) })])
-  clearTimeout(timer)
-  return getModule(hash)
-}
 const getBackend = (el = document.documentElement) => {
-  let backend = el.dataset.backend ?? ''
-  if (backend === '{{backend}}') { backend = '' }
+  let backend = el.dataset.backend
+  if (backend == null || backend === '{{backend}}') { backend = '' }
   if (!backend) {
     if (import.meta.env.DEV) { return 'dev' }
     let pages = location.hostname.match(/(?<=\.)git[\w-]+(?=\.io$)/i)
@@ -35,17 +19,14 @@ const getBaseURL = (backend: string) => {
   }
   return baseURL
 }
-!(async () => {
+
+{
   const root = document.getElementById('app')!
   try {
-    root.textContent = '加载中'
-    const APP = import('./components/app.vue')
-    const firstModule = getFirstModule(APP)
     const backend = getBackend()
     const baseURL = getBaseURL(backend)
-    const { createApp, App } = await APP
     const app = createApp(App, {
-      backend, baseURL, firstModule, 'onMount:app'(value: any) {
+      backend, baseURL, 'onMount:app'(value: any) {
         (window as any).vm = value
       }
     })
@@ -55,4 +36,4 @@ const getBaseURL = (backend: string) => {
     root.textContent = '加载失败'
     throw error
   }
-})()
+}

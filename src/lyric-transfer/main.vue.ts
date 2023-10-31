@@ -3,7 +3,7 @@
 */
 import { defineComponent, createVNode as h, shallowRef as sr } from 'vue'
 import { Message, Row, Col, Affix, Card, Icon, Input, Button, ButtonGroup, Checkbox } from 'view-ui-plus'
-import '../components/app.vue'
+
 import DropFile from '../components/drop-file.vue'
 import { Awaiter } from '../components/awaiter.vue'
 import hiragana2ChinesePronounce from './hiragana2chinese-pronounce'
@@ -13,19 +13,20 @@ import * as pinyin from './pinyin'
 
 type ReplaceFuncs = Record<string, (str: string) => string>
 const replaceFuncs: ReplaceFuncs = {
-  __proto__: null as any,
+  __proto__: null as never,
   debugPinyin: str => str.replace(pinyin.reg, (m, a = '', b) => `[${a},${b}]`),
   pinyinToRomaji: pinyin.toRomaji,
   pinyinToHiragana: pinyin.toHiragana,
   pinyinToKatakana: pinyin.toKatakana,
   romajiToHiragana: romaji.toHiragana,
   romajiToKatakana: romaji.toKatakana,
+  toRomaji: romaji.from,
   toHiragana, toKatakana,
   hiraganaToChinesePronounce: str => hiragana2ChinesePronounce(toHiragana(str))
 }
 const phonemesModeSet = new Set(['hiraganaToChinesePronounce'])
 
-const pinyinjs = (async () => {
+const loadPinyinjs = async () => {
   const { pinyinUtil } = await import('ipinyinjs/pinyinUtil')
   Object.assign<ReplaceFuncs, ReplaceFuncs>(replaceFuncs, {
     hanziToPinyinTone: str => pinyinUtil.getPinyin(str, ' ', !0, !1),
@@ -33,11 +34,13 @@ const pinyinjs = (async () => {
     hanziToPinyin: str => pinyinUtil.getPinyin(str, ' ', !1, !1),
   })
   return pinyinUtil
-})()
+}
+let pinyinjs: ReturnType<typeof loadPinyinjs>
 
 export default defineComponent({
   name: 'Lyric Preprocessor',
   data() {
+    pinyinjs ??= loadPinyinjs()
     return {
       file: null as File | null,
       pinyinjs,
@@ -65,8 +68,8 @@ export default defineComponent({
         this.lyrics = lyrics.join('\n')
       } catch (e) {
         Message.error('打开文件失败')
-        console.error(e)
         this.close()
+        throw e
       }
     },
     handleChange(files: File[]) {
@@ -145,25 +148,28 @@ export default defineComponent({
             }, () => '音素模式'), h('br'),
             h(ButtonGroup, { style: { 'margin-top': '10px' } }, () => [
               h(Button, { 'html-type': 'submit', 'data-name': 'pinyinToRomaji' }, () => '拼音→罗马字'),
+              h(Button, { 'html-type': 'submit', 'data-name': 'pinyinToHiragana' }, () => '拼音→平假名'),
+              h(Button, { 'html-type': 'submit', 'data-name': 'pinyinToKatakana' }, () => '拼音→片假名')
             ]), h('br'),
             h(ButtonGroup, { style: { 'margin-top': '10px' } }, () => [
-              h(Button, { 'html-type': 'submit', 'data-name': 'pinyinToHiragana' }, () => '拼音→平假名'),
               h(Button, { 'html-type': 'submit', 'data-name': 'romajiToHiragana' }, () => '罗马字→平假名'),
               h(Button, { 'html-type': 'submit', 'data-name': 'toHiragana' }, () => '片假名→平假名')
             ]), h('br'),
             h(ButtonGroup, { style: { 'margin-top': '10px' } }, () => [
-              h(Button, { 'html-type': 'submit', 'data-name': 'pinyinToKatakana' }, () => '拼音→片假名'),
               h(Button, { 'html-type': 'submit', 'data-name': 'romajiToKatakana' }, () => '罗马字→片假名'),
               h(Button, { 'html-type': 'submit', 'data-name': 'toKatakana' }, () => '平假名→片假名')
+            ]), h('br'),
+            h(ButtonGroup, { style: { 'margin-top': '10px' } }, () => [
+              h(Button, { 'html-type': 'submit', 'data-name': 'toRomaji' }, () => '假名→罗马字')
             ]), h('br'),
             h(Awaiter, { promise: vm.pinyinjs }, {
               empty: () => null,
               default: (state: string, value: any) => [
                 h(ButtonGroup, { style: { 'margin-top': '10px' } }, () => {
                   const disabled = state !== 'fulfilled', loading = state === 'pending'
-                  const props = { disabled, loading, 'html-type': 'submit' }
+                  const props = { disabled, 'html-type': 'submit' }
                   return [
-                    h(Button, { ...props, 'data-name': 'hanziToPinyinTone' }, () => '汉字→拼音(带声调)'),
+                    h(Button, { ...props, loading, 'data-name': 'hanziToPinyinTone' }, () => '汉字→拼音(带声调)'),
                     h(Button, { ...props, 'data-name': 'hanziToPinyinNumTone' }, () => '汉字→拼音(数字声调)'),
                     h(Button, { ...props, 'data-name': 'hanziToPinyin' }, () => '汉字→拼音')
                   ]
