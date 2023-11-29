@@ -55,9 +55,6 @@ export default defineComponent({
       inst: sr<utils.InstTypes | null>(null)
     }
   },
-  mounted() {
-    this.$emit('mount:app', this)
-  },
   methods: {
     async loadFile(type: utils.CtorTypes, file: File) {
       try {

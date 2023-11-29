@@ -1,6 +1,6 @@
 
-import { defineComponent, createVNode as h, shallowRef as sr, onUnmounted, getCurrentInstance } from 'vue'
-import { Spin } from 'view-ui-plus'
+import { defineComponent, createVNode as h, shallowRef as sr, onBeforeUnmount } from 'vue'
+import { LoadingBar, Spin } from './spinner.vue'
 import { Awaiter, AwaiterState } from './awaiter.vue'
 import type { Module } from './apps'
 let APPS: Promise<typeof import('./apps')>
@@ -18,33 +18,26 @@ const getModuleAsync = async (hash = location.hash) => {
 }
 
 export const App = defineComponent({
-  setup(props, ctx) {
+  emits: ['mount:app'],
+  inheritAttrs: false,
+  setup(props, { attrs, slots, emit }) {
     const module = sr(getModuleAsync())
     const handleHashchange = (e: HashChangeEvent) => {
       module.value = getModuleAsync()
     }
     window.addEventListener('hashchange', handleHashchange)
-    onUnmounted(() => window.removeEventListener('hashchange', handleHashchange))
-    const $ = getCurrentInstance()!
-    let awaiterSlots
-    return () => h(Awaiter, { promise: module.value, onFulfilled: handleFulfilled }, awaiterSlots ??= {
-      default: (state: AwaiterState, module: Module) => {
-        let vnode = null
-        if (state === 'fulfilled' && module != null) {
-          vnode = h(module, $.attrs, $.slots)
-          vnode.ref = $.vnode.ref
-        }
-        return [
-          h(Spin, { show: state === 'pending', size: 'large', fix: true }),
-          vnode
-        ]
-      },
-      rejected: () => h('div', { class: 'ivu-loading-bar', style: 'height: 2px' }, [
-        h('div', {
-          class: 'ivu-loading-bar-inner ivu-loading-bar-inner-failed-color-error',
-          style: 'height: 2px'
-        })
-      ])
+    onBeforeUnmount(() => window.removeEventListener('hashchange', handleHashchange))
+    const ref = (vm: any) => { emit('mount:app', vm) }
+    let render
+    return () => h(Awaiter, {
+      promise: module.value, onFulfilled: handleFulfilled
+    }, render ??= (state: AwaiterState, module: NonNullable<Module>) => {
+      if (state === 'fulfilled' && module == null) { state = 'rejected' }
+      return [
+        state === 'fulfilled' ? h(module, { ...attrs, ref }, slots) : null,
+        h(LoadingBar, { state }),
+        h(Spin, { show: state === 'pending' })
+      ]
     })
   }
 })

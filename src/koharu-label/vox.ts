@@ -2,10 +2,10 @@
 import { isPlainObject } from "./utils"
 const { padStart } = String.prototype, { trunc } = Math
 
-let baseURL = ''
-export const getBaseURL = () => baseURL
+export let baseURL = '', settingURL = ''
 export const setBaseURL = (url: number | string = 50021) => {
   if (typeof url === 'number') { url = `http://127.0.0.1:${url}/` }
+  settingURL = new URL('/setting', url).href
   baseURL = url
 }
 setBaseURL()

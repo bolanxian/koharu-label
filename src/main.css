@@ -24,15 +24,27 @@
   }
 }
 
-html,
-body {
-  height: 100%;
-}
-
 .container {
   margin: 0 auto;
 }
 
 .ivu-card:hover {
   z-index: 1;
+}
+
+@keyframes loading-bar-inner--spinner {
+  0% {
+    left: -12px;
+  }
+
+  100% {
+    left: calc(100% + 12px);
+  }
+}
+
+.ivu-loading-bar.ivu-loading-bar--spinner>.ivu-loading-bar-inner>.ivu-loading-bar-inner {
+  position: absolute;
+  background: #FFF;
+  width: 12px;
+  animation: loading-bar-inner--spinner 5s cubic-bezier(.55, .06, .68, .19) infinite;
 }

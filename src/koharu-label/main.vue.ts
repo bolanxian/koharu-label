@@ -49,9 +49,6 @@ export default defineComponent({
       inst: sr<SvpFile | null>(null)
     }
   },
-  mounted() {
-    this.$emit('mount:app', this)
-  },
   watch: {
     worldType: {
       handler(worldType: string) {

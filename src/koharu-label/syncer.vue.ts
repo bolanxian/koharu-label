@@ -186,9 +186,6 @@ const Main = defineComponent({
       worldResult: sr<PyworldAll | null>(null)
     }
   },
-  mounted() {
-    this.$emit('mount:app', this)
-  },
   watch: {
     worldType: {
       handler(worldType: string) {
@@ -215,7 +212,7 @@ const Main = defineComponent({
   methods: {
     getVoxInfo() { this.voxInfo = getVoxInfo() },
     setVoxBaseURL() {
-      let url = prompt('VOICEVOX Engine URL:', vox.getBaseURL())
+      let url = prompt('VOICEVOX Engine URL:', vox.baseURL)
       if (url == null) { return }
       vox.setBaseURL(url === '' ? void 0 : url)
       this.getVoxInfo()
@@ -384,7 +381,7 @@ const Main = defineComponent({
             default: () => {
               if (fulfilled) { return [h('pre', { innerText: info.speakers })] }
               if (rejected) {
-                const href = new URL('/setting', vox.getBaseURL()).href
+                const href = vox.settingURL
                 return [
                   M('conn_vox_fail'), h('br'),
                   M('set_cors0'), h('a', { target: '_blank', href }, [href]), M('set_cors1')
