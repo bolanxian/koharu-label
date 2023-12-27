@@ -1,16 +1,7 @@
 
 import z from 'zod'
+import { hasOwn, isArray } from '../utils'
 import { TypedArray } from './ndarray'
-
-const { apply } = Reflect
-const { call: _call, bind: _bind } = Function.prototype
-const objectProto = Object.prototype
-export const hasOwn = Object.hasOwn ?? apply(_bind, _call, [objectProto.hasOwnProperty])
-export const getString = apply(_bind, _call, [objectProto.toString])
-export const isPlainObject = (o: any): o is Record<string | number | symbol, any> => {
-  o = getString(o)
-  return o === '[object Object]' || o === '[object Array]'
-}
 
 export const zodAudioInfo = z.object({ format: z.string(), subtype: z.string() })
 export type AudioInfo = z.input<typeof zodAudioInfo>
@@ -90,10 +81,11 @@ export const assertByteorder = (expect: any): string | void => {
   }
 }
 export function* xgetZeroRanges(buf: TypedArray): Generator<[number, number]> {
-  let i, begin = null
-  for (i = 0; i < buf.length; i++) {
+  let begin: number | null = null
+  let i = 0, len = buf.length
+  for (; i < len; i++) {
     const isZero = buf[i] === 0
-    if (begin === null) {
+    if (begin == null) {
       if (isZero) { begin = i }
     } else {
       if (!isZero) { yield [begin, i]; begin = null }
@@ -104,21 +96,47 @@ export function* xgetZeroRanges(buf: TypedArray): Generator<[number, number]> {
 export const getZeroRanges = (buf: TypedArray): [number, number][] => {
   return Array.from(xgetZeroRanges(buf))
 }
+export const fillF0 = (f0: Float64Array, len: number) => {
+  f0 = Float64Array.from(f0)
+  const zeroRanges = getZeroRanges(f0)
+  {
+    const first = zeroRanges[0]
+    if (first != null && first[0] === 0) {
+      zeroRanges.shift()
+      const end = first[1]
+      f0.fill(f0[end], 0, end)
+    }
+    const last = zeroRanges.at(-1)
+    if (last != null && last[1] === f0.length) {
+      zeroRanges.pop()
+      const begin = last[0]
+      f0.fill(f0[begin - 1], begin)
+    }
+  }
+  for (const [begin, end] of zeroRanges) {
+    const left = f0[begin - 1], right = f0[end]
+    let ratio = (right - left) / (end - begin)
+    ratio ||= 0
+    for (let i = begin, j = 1; i < end; i++, j++) {
+      f0[i] = left + ratio * j
+    }
+  }
+  const { BYTES_PER_ELEMENT } = Float64Array, { byteLength } = f0
+  let parts: Float64Array[]
+  if (len > byteLength) {
+    const post = new Float64Array((len - byteLength) / BYTES_PER_ELEMENT)
+    parts = [f0, post.fill(f0.at(-1) ?? 0)]
+  } else if (len < byteLength) {
+    parts = [f0.subarray(0, len / BYTES_PER_ELEMENT)]
+  } else {
+    parts = [f0]
+  }
+  return parts
+}
+
 export const EXT_REG = /\.([^.]+)$/
 export const getFileExt = (file: File): string | null => {
   return file.name.match(EXT_REG)?.[1] ?? null
-}
-export const download = (sequence: string | BlobPart[] | Blob, filename = ''): void => {
-  const a = document.createElement('a')
-  a.download = filename
-  if (typeof sequence === 'string') {
-    a.href = sequence
-  } else {
-    const blob = (sequence instanceof Blob) ? sequence : new Blob(sequence)
-    const src = a.href = URL.createObjectURL(blob)
-    setTimeout(() => { URL.revokeObjectURL(src) }, 60000)
-  }
-  a.click()
 }
 export const fileSystemHandleVerifyPermission = async (handle: any | FileSystemDirectoryHandle, withWrite = false): Promise<boolean> => {
   const opts: any = {}, ok = 'granted'
@@ -127,11 +145,11 @@ export const fileSystemHandleVerifyPermission = async (handle: any | FileSystemD
   if (ok === await handle.requestPermission(opts)) { return true }
   return false
 }
-export const saveFile = async (handle: FileSystemDirectoryHandle, sequence: BlobPart[] | Blob, name: string) => {
+export const saveFile = async (handle: FileSystemDirectoryHandle, parts: BlobPart[] | Blob, name: string) => {
   const fileHandle = await handle.getFileHandle(name, { create: true })
   const writable = await fileHandle.createWritable()
   try {
-    const blob = (sequence instanceof Blob) ? sequence : new Blob(sequence)
+    const blob = isArray(parts) ? new Blob(parts) : parts
     await writable.write(blob)
   } finally {
     await writable.close()
@@ -139,18 +157,19 @@ export const saveFile = async (handle: FileSystemDirectoryHandle, sequence: Blob
 }
 const Locale: void | typeof Intl.Locale = window?.Intl?.Locale ?? null
 const minimize = typeof Locale === 'function' ? (lang: string) => new Locale(lang).language : String
-function* xlocaler(defaultLocale?: string, locales = navigator.languages) {
+function* xlocaler(locales = navigator.languages, defaultLocale?: string) {
   yield* locales
   for (const locale of locales) { yield minimize(locale) }
   if (defaultLocale != null) { yield defaultLocale }
 }
-export const localer = <T extends Record<string, any>>(
-  getMap: (locale: string) => undefined | T, defaultLocale = 'zh-Hans', locales = navigator.languages
-): (<K extends string>(msg: K) => K extends keyof T ? T[K] : '') => {
-  for (const locale of xlocaler(defaultLocale, locales)) {
+let defaultLocale = 'zh-Hans'
+export const localer = <T extends Record<string, any>, D extends any>(
+  getMap: (locale: string) => undefined | T, defaultValue: D, locales = navigator.languages
+): (<K extends string>(msg: K) => K extends keyof T ? T[K] : D) => {
+  for (const locale of xlocaler(locales, defaultLocale)) {
     const map = getMap(locale)
     if (map == null) { continue }
-    return <K extends string>(msg: K) => (hasOwn(map, msg) ? map[msg] : '') as K extends keyof T ? T[K] : ''
+    return <K extends string>(msg: K) => (hasOwn(map, msg) ? map[msg] : defaultValue) as K extends keyof T ? T[K] : D
   }
   throw new RangeError(`invalid language tags: ${JSON.stringify(locales)}`)
 }

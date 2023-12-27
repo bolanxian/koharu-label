@@ -1,5 +1,6 @@
 
-import { defineComponent, createVNode as h, shallowRef as sr, onBeforeUnmount } from 'vue'
+import { defineComponent, shallowRef as sr, onBeforeUnmount, createVNode as h, createCommentVNode } from 'vue'
+import { on, off } from '../utils'
 import { LoadingBar, Spin } from './spinner.vue'
 import { Awaiter, AwaiterState } from './awaiter.vue'
 import type { Module } from './apps'
@@ -22,17 +23,17 @@ export const App = defineComponent({
   inheritAttrs: false,
   setup(props, { attrs, slots, emit }) {
     const module = sr(getModuleAsync())
-    const handleHashchange = (e: HashChangeEvent) => {
+    const handleHashchange = (e: Event) => {
       module.value = getModuleAsync()
     }
-    window.addEventListener('hashchange', handleHashchange)
-    onBeforeUnmount(() => window.removeEventListener('hashchange', handleHashchange))
+    on(null, 'hashchange', handleHashchange)
+    onBeforeUnmount(() => off(null, 'hashchange', handleHashchange))
     const ref = (vm: any) => { emit('mount:app', vm) }
     let render
     return () => h(Awaiter, {
       promise: module.value, onFulfilled: handleFulfilled
     }, render ??= (state: AwaiterState, module: NonNullable<Module>) => {
-      if (state === 'fulfilled' && module == null) { state = 'rejected' }
+      if (state === 'fulfilled' && module == null) { state = 'empty' }
       return [
         state === 'fulfilled' ? h(module, { ...attrs, ref }, slots) : null,
         h(LoadingBar, { state }),

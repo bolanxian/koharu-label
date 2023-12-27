@@ -1,6 +1,7 @@
 
 import { defineComponent, createVNode as h, shallowRef as sr, createCommentVNode } from 'vue'
 import { Icon } from 'view-ui-plus'
+import { on, off } from '../utils'
 const { isArray } = Array
 
 export const DropGlobal = defineComponent({
@@ -9,17 +10,17 @@ export const DropGlobal = defineComponent({
     drop: null
   },
   methods: {
-    handle(e: DragEvent) {
-      this.$emit(e.type as any, e)
+    handle(e: Event) {
+      this.$emit(e.type as any, e as DragEvent)
     }
   },
   beforeMount() {
-    document.addEventListener('dragover', this.handle)
-    document.addEventListener('drop', this.handle)
+    on(document, 'dragover', this.handle)
+    on(document, 'drop', this.handle)
   },
   beforeUnmount() {
-    document.removeEventListener('dragover', this.handle)
-    document.removeEventListener('drop', this.handle)
+    off(document, 'dragover', this.handle)
+    off(document, 'drop', this.handle)
   },
   render() {
     return createCommentVNode('global')

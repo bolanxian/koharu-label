@@ -4,11 +4,12 @@
 import { defineComponent, createVNode as h, shallowRef as sr } from 'vue'
 import { Message, Row, Col, Affix, Card, Icon, Input, Button, ButtonGroup, Checkbox } from 'view-ui-plus'
 
+import { download } from '../utils'
 import DropFile from '../components/drop-file.vue'
 import { Awaiter } from '../components/awaiter.vue'
 import hiragana2ChinesePronounce from './hiragana2chinese-pronounce'
 import type * as utils from './utils'
-import { romaji, toHiragana, toKatakana, download, types, Types } from './utils'
+import { romaji, toHiragana, toKatakana, types, Types } from './utils'
 import * as pinyin from './pinyin'
 
 type ReplaceFuncs = Record<string, (str: string) => string>
@@ -40,18 +41,18 @@ let pinyinjs: ReturnType<typeof loadPinyinjs>
 export default defineComponent({
   name: 'Lyric Preprocessor',
   data() {
-    pinyinjs ??= loadPinyinjs()
     return {
       file: null as File | null,
-      pinyinjs,
-      length: '',
+      length: 0,
       lyrics: '',
       output: '',
       phonemesMode: false
     }
   },
   setup(props, ctx) {
+    pinyinjs ??= loadPinyinjs()
     return {
+      pinyinjs,
       inst: sr<utils.InstTypes | null>(null)
     }
   },
@@ -61,7 +62,7 @@ export default defineComponent({
         const inst = await type.loadAsFile<utils.InstTypes>(this.file = file)
         this.inst = inst
         const lyrics = inst.getLyrics()
-        this.length = `[${lyrics.length}]`
+        this.length = lyrics.length
         this.lyrics = lyrics.join('\n')
       } catch (e) {
         Message.error('打开文件失败')
@@ -82,7 +83,7 @@ export default defineComponent({
     close() {
       this.file = null
       this.inst = null
-      this.length = ''
+      this.length = 0
       this.lyrics = ''
       this.output = ''
     },
@@ -91,7 +92,7 @@ export default defineComponent({
       if (file == null || inst == null) { return }
       inst.reset()
       const lyrics = inst.getLyrics()
-      this.length = `[${lyrics.length}]`
+      this.length = lyrics.length
       this.lyrics = lyrics.join('\n')
     },
     export() {
@@ -126,16 +127,15 @@ export default defineComponent({
     const vm = this
     return h(Row, { gutter: 5 }, () => [
       h(Col, { xs: 24, lg: 12 }, () => h(Affix, {}, () => [
-        vm.file != null
-          ? h(DropFile, { global: true, style: 'display:none' })
-          : h(DropFile, { global: true, onChange: vm.handleChange }),
-        vm.file != null ? h(Card, { icon: 'md-document', title: vm.file.name + vm.length }, {
-          extra: () => h(Button, { onClick: vm.close }, () => h(Icon, { type: 'md-close' })),
-          default: () => [
-            h(Button, { onClick: vm.reset }, () => '重置'),
-            h(Button, { style: { float: 'right' }, onClick: vm.export }, () => '导出')
-          ]
-        }) : null,
+        vm.file == null
+          ? h(DropFile, { global: true, onChange: vm.handleChange })
+          : h(Card, { icon: 'md-document', title: `${vm.file.name}[${vm.length}]` }, {
+            extra: () => h(Button, { onClick: vm.close }, () => h(Icon, { type: 'md-close' })),
+            default: () => [
+              h(Button, { onClick: vm.reset }, () => '重置'),
+              h(Button, { style: { float: 'right' }, onClick: vm.export }, () => '导出')
+            ]
+          }),
         h(Card, { title: '转换', style: { 'margin-top': '20px' } }, {
           extra: () => h(Button, { onClick: vm.reverseCopy }, () => '←复制'),
           default: () => h('form', { action: 'about:blank', onSubmit: vm.handleSubmit }, [

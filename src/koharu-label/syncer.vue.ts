@@ -4,6 +4,7 @@
 import { defineComponent, createVNode as h, shallowRef as sr } from 'vue'
 import { Message, Row, Col, Card, Icon, Input, Button, ButtonGroup, Select, Option } from 'view-ui-plus'
 
+import { download } from '../utils'
 import DropFile from '../components/drop-file.vue'
 import { Awaiter, AwaiterState } from '../components/awaiter.vue'
 import * as utils from './utils'
@@ -53,10 +54,10 @@ const M = utils.localer((locale) => {
       set_cors1: ' to set CORS'
     }
   }
-})
+}, '')
 const T = utils.localer<{
   require: (type: string) => string
-}>((locale) => {
+}, () => ''>((locale) => {
   switch (locale) {
     case 'zh-CN': case 'zh-Hans': return {
       require: (type) => `需要 ${type} 文件`
@@ -65,7 +66,7 @@ const T = utils.localer<{
       require: (type) => `Require ${type} file`
     }
   }
-})
+}, () => '')
 const utils2 = {
   normalizeLab(lab: string | string[]) {
     const reg = /^(pau|sil)$/
@@ -225,7 +226,7 @@ const Main = defineComponent({
         if (type === 'lab') { lab = file }
         else if (type === 'f0') { f0 = file }
         else if (type === 'vvproj') {
-          utils.download([await utils2.normalizeVvproj(file)], file.name)
+          download([await utils2.normalizeVvproj(file)], file.name)
           return
         } else if (audioTypes.has(type!)) { audio = file }
       }
@@ -278,7 +279,7 @@ const Main = defineComponent({
       if (!(world != null && audio instanceof AudioData)) { return }
       const { name, data, fs, info } = audio
       const file = await world.encodeAudio(data, fs, info?.format, info?.subtype)
-      utils.download([file], name)
+      download([file], name)
     },
     log(msg?: string | null) {
       if (msg == null) { this.info = ''; return }

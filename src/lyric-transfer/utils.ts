@@ -1,25 +1,32 @@
 
 import YAML from 'yaml'
+import { call } from '../utils'
 import table, { reg as romajiReg } from './table?table-reg'
 import reverseTable, { reg as reverseRomajiReg } from './table?table-reg&reverse'
 
+type Replacer = [RegExp, string | ((sub: string, ...args: any[]) => string)]
+
 const { fromCharCode } = String
-const { charCodeAt, replace } = String.prototype
-type ReplacerList = [RegExp, string | ((substring: string, ...args: any[]) => string)][]
-export const replacer = (list: ReplacerList) => {
+const { charCodeAt, replace, split } = String.prototype as {
+  charCodeAt: String['charCodeAt']
+  replace(this: string, ...args: Replacer): string
+  split(this: string, ...args: [string, number?]): string[]
+}
+
+export const replacer = (list: Replacer[]) => {
   const fn = (str: string) => {
     for (const a of fn.map) {
-      str = replace.call(str, a[0], a[1] as any)
+      str = call(replace, str, a[0], a[1])
     }
     return str
   }
   fn.map = new Map(list)
   return fn
 }
-export const replacerShort = (list: ReplacerList) => {
+export const replacerShort = (list: Replacer[]) => {
   const fn = (str: string) => {
     for (const a of fn.map) {
-      const s = replace.call(str, a[0], a[1] as any)
+      const s = call(replace, str, a[0], a[1])
       if (s !== str) { return s }
       str = s
     }
@@ -42,36 +49,23 @@ export const romaji = Object.freeze({
     romajiReg,
     m => {
       const s = table[m]
-      return s != null ? s.split(',', 1)[0] : m
+      return s != null ? call(split, s, ',', 1)[0] : m
     }
   ]]),
   toKatakana: replacer([[
     romajiReg,
     m => {
       const s = table[m]
-      return s != null ? s.split(',', 2)[1] : m
+      return s != null ? call(split, s, ',', 2)[1] : m
     }
   ]])
 })
 const createCharCodeOffset = (reg: RegExp, i: number) => {
-  const cb = (m: string) => fromCharCode(charCodeAt.call(m, 0) + i)
-  return replacer([[reg, cb]])
+  return replacer([[reg, m => fromCharCode(call(charCodeAt, m, 0) + i)]])
 }
 
 export const toHiragana = createCharCodeOffset(/[\u30a1-\u30f6]/g, -0x60)//カタカナをひらがなに変換する関数
 export const toKatakana = createCharCodeOffset(/[\u3041-\u3096]/g, 0x60)//ひらがなをカタカナに変換する関数
-export const download = (sequence: string | BlobPart[] | Blob, filename = '') => {
-  const a = document.createElement('a')
-  a.download = filename
-  if (typeof sequence === 'string') {
-    a.href = sequence
-  } else {
-    const blob = (sequence instanceof Blob) ? sequence : new Blob(sequence)
-    const src = a.href = URL.createObjectURL(blob)
-    setTimeout(() => { URL.revokeObjectURL(src) }, 60000)
-  }
-  a.click()
-}
 
 export abstract class TypeAsText {
   static async loadAsFile<T extends TypeAsText>(this: { new(text: string): T }, file: Blob): Promise<T> {

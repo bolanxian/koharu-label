@@ -11,6 +11,7 @@ const ipinyinjs = (): Plugin => {
     name: 'ipinyinjs',
     transform(code, id) {
       if (!filter(id)) { return null }
+      id = id.split('?', 1)[0]
       if (id.endsWith('node_modules/ipinyinjs/dict/pinyin_dict_withtone.js')) {
         return `export ${code}`
       }
@@ -95,6 +96,7 @@ export default defineConfig({
     extensions: ['.js', '.ts', '.json', '.vue']
   },
   experimental: { renderBuiltUrl: externalAssets.renderBuiltUrl },
+  optimizeDeps: { exclude: ['world-wasm', 'ipinyinjs'] },
   build: {
     outDir: '../dist',
     emptyOutDir: false,
@@ -131,6 +133,7 @@ export default defineConfig({
     {
       name: 'view-ui-plus',
       enforce: 'pre',
+      apply: 'build',
       resolveId(source, importer, options) {
         if (source === 'view-ui-plus') { return source }
       },

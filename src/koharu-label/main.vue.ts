@@ -4,6 +4,7 @@
 import { defineComponent, createVNode as h, shallowRef as sr } from 'vue'
 import { Message, Row, Col, Card, Icon, Input, Button, ButtonGroup, Radio, RadioGroup, Checkbox, Select, Option } from 'view-ui-plus'
 
+import { download } from '../utils'
 import readme from '../assets/readme.md?markdown'
 import { romaji } from '../lyric-transfer/utils'
 import DropFile from '../components/drop-file.vue'
@@ -13,6 +14,7 @@ import { AudioData } from './utils'
 import { PyworldDio, PyWorld } from './pyworld'
 import { WorldWasm, isSupport as isSupportWasm } from './world-wasm'
 import SvpFile from './svp-file'
+import { createNtpjZip } from './ntpj-zip'
 
 type World = PyWorld | WorldWasm | null
 export default defineComponent({
@@ -147,53 +149,23 @@ export default defineComponent({
       this.audio = file
       this.worldResult = result
     },
-    async exportF0() {
+    exportF0() {
       const { audioName, worldResult } = this
       if (audioName == null || worldResult == null) { return }
       let _len = prompt('填充长度（字节）')
       if (typeof _len !== 'string') { return }
       _len = _len.replace(/[\s,]/g, '')
+      let parts: Float64Array[]
       if (!_len) {
-        this.saveFile([worldResult.f0], audioName + '.f0')
-        return
-      }
-      let len = parseInt(_len)
-      if (len !== len) { return }
-      let { f0 } = worldResult
-      f0 = (f0.constructor as Float64ArrayConstructor).from(f0)
-      const zeroRanges = utils.getZeroRanges(f0)
-      {
-        const first = zeroRanges[0]
-        if (first != null && first[0] === 0) {
-          zeroRanges.shift()
-          const end = first[1]
-          f0.fill(f0[end], 0, end)
-        }
-        const last = zeroRanges.at(-1)
-        if (last != null && last[1] === f0.length) {
-          zeroRanges.pop()
-          const begin = last[0]
-          f0.fill(f0[begin - 1], begin)
-        }
-      }
-      for (const [begin, end] of zeroRanges) {
-        const left = f0[begin - 1], right = f0[end]
-        const ratio = (right - left) / (1 + end - begin)
-        for (let i = begin, j = 1; i < end; i++, j++) {
-          f0[i] = left + ratio * j
-        }
-      }
-      let sequence: Float64Array[]
-      if (len > f0.byteLength) {
-        len = (len - f0.byteLength) / Float64Array.BYTES_PER_ELEMENT
-        sequence = [f0, new Float64Array(len).fill(f0.at(-1) ?? 0)]
-      } else if (len < f0.byteLength) {
-        sequence = [f0.subarray(0, len / Float64Array.BYTES_PER_ELEMENT)]
+        parts = [worldResult.f0]
       } else {
-        sequence = [f0]
+        let { f0 } = worldResult
+        let len = parseInt(_len)
+        if (len !== len) { return }
+        if (len === 0) { len = f0.byteLength }
+        parts = utils.fillF0(f0, len)
       }
-      console.log(zeroRanges, sequence)
-      this.saveFile(sequence, audioName + '.f0')
+      this.saveFile(parts, audioName + '.f0')
     },
     async createSvpFile() {
       const vm = this, { labFile, audio, audioName, worldResult, phonemesRadio } = vm
@@ -234,23 +206,28 @@ export default defineComponent({
       return inst
     },
     async exportSvp() {
-      const vm = this, { audioName } = vm
-      const inst = await vm.createSvpFile()
+      const { audioName } = this
+      const inst = await this.createSvpFile()
       const svp = inst.toJSON(audioName)
       this.saveFile([JSON.stringify(svp), '\0'], audioName + '.svp')
     },
     async exportUstx() {
-      const vm = this, { audioName } = vm
-      const inst = await vm.createSvpFile()
+      const { audioName } = this
+      const inst = await this.createSvpFile()
       this.saveFile([inst.toUstx(audioName)], audioName + '.ustx')
     },
-    async saveFile(sequence: BlobPart[], name: string) {
+    async exportNtpj() {
+      const { audioName, worldResult } = this
+      const inst = await this.createSvpFile()
+      this.saveFile(await createNtpjZip(audioName!, inst, worldResult!.f0), `${audioName!}.zip`)
+    },
+    async saveFile(parts: BlobPart[], name: string) {
       const { handle } = this
       if (handle == null) {
-        utils.download(sequence, name)
+        download(parts, name)
         return
       }
-      await utils.saveFile(handle, sequence, name)
+      await utils.saveFile(handle, parts, name)
       Message.success('导出成功')
     }
   },
@@ -317,20 +294,27 @@ export default defineComponent({
           icon: vm.audioName != null ? 'md-document' : '',
           title: vm.handle != null ? `导出到 ${vm.handle.name}` : '导出'
         }, {
-          extra: () => h(ButtonGroup, {}, () => [
-            h(Button, {
-              disabled: typeof window.showDirectoryPicker !== 'function',
-              onClick: vm.openDir
-            }, () => '打开文件夹'),
-            h(Button, {
-              disabled: vm.audioName == null && vm.labFile == null,
-              onClick: vm.exportSvp
-            }, () => 'svp'),
-            h(Button, {
-              disabled: vm.audioName == null && vm.labFile == null,
-              onClick: vm.exportUstx
-            }, () => 'ustx')
-          ]),
+          extra: () => h(ButtonGroup, {}, () => {
+            const disabled = vm.audioName == null && vm.labFile == null
+            return [
+              h(Button, {
+                disabled: typeof window.showDirectoryPicker !== 'function',
+                onClick: vm.openDir
+              }, () => '打开文件夹'),
+              h(Button, {
+                disabled, onClick: vm.exportSvp,
+                title: '适用于 Synthesizer V Studio'
+              }, () => 'svp'),
+              h(Button, {
+                disabled, onClick: vm.exportUstx,
+                title: '适用于 OpenUtau'
+              }, () => 'ustx'),
+              h(Button, {
+                disabled, onClick: vm.exportNtpj,
+                title: '适用于 NEUTRINOTyouseiSienTool v1.8.0.3'
+              }, () => 'ntpj')
+            ]
+          }),
           default: () => [
             h(Input, {
               modelValue: vm.bpm,

@@ -251,7 +251,7 @@ export default class SvpFile {
     const ratio = 705600000 / 480
     ustx.tempos[0].bpm = this.bpm
     const part = ustx.voice_parts[0]
-    part.name = name
+    if (name != null) { part.name = name }
     const sampleNote = JSON.stringify(part.notes[0])
     part.notes = this.notes.map(_note => {
       const note = JSON.parse(sampleNote)

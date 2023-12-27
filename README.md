@@ -1,4 +1,4 @@
-# Koharu Label<img alt="" style="float:right" width="100" src="public/favicon.svg">
+# Koharu Label
 将`标注文件`和`音高`组合为`Synthesizer V Studio`工程文件或`OpenUtau`工程文件。  
 
 
@@ -10,7 +10,7 @@
 - 输出
   - Synthesizer V Studio
   - [OpenUtau](https://github.com/stakira/OpenUtau/)
-  - [NEUTRINO](https://n3utrino.work/) (svp->Midi->MusicXML，建议搭配[TyouseiSienTool v1.5.1.0](https://github.com/sigprogramming/tyouseisientool/releases/tag/v1.5.1.0))
+  - [NEUTRINO](https://n3utrino.work/) ([TyouseiSienTool v1.8.0.3](https://github.com/sigprogramming/tyouseisientool/releases/tag/v1.8.0.3))
   
 - 请注意检查相关声库与软件的使用规则
 - 在作品中使用时，推荐写上`调校协力：角色名(软件名)`
@@ -24,7 +24,7 @@
 
 
 ## [下载版](https://pan.baidu.com/s/1fJgz6Resv2gt_GJaLMw6Tw?pwd=khrr)
-- 将`koharu-label.7z`和`koharu-label-runtime.7z`解压到同一目录
+- 将`koharu-label.zip`和`koharu-label-runtime.zip`解压到同一目录
 - 运行`run.bat`
 
 **运行环境**
@@ -34,15 +34,15 @@
 
 ## 构建
 ```batch
-:安装依赖
+: 安装依赖
 npm install
 
-:构建
+: 构建
 npm run build
 
-:安装Python依赖
+: 安装Python依赖
 npm run requirements
 
-:启动
+: 启动
 py -3 app.py
 ```

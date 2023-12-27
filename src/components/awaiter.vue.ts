@@ -1,5 +1,7 @@
 
 import { defineComponent, shallowRef as sr, watch } from 'vue'
+import { call } from '../utils'
+const { has, add, delete: del } = WeakSet.prototype
 
 export type AwaiterState = 'empty' | 'pending' | 'fulfilled' | 'rejected'
 export const Awaiter = defineComponent({
@@ -18,16 +20,18 @@ export const Awaiter = defineComponent({
     const resolve = async (promise: any) => {
       let state: AwaiterState = 'pending', value
       settle(state, void 0)
-      set.add(promise)
+      call(add, set, promise)
       try {
         value = await promise
         state = 'fulfilled'
       } catch (e) {
         value = e
         state = 'rejected'
+        throw e
+      } finally {
+        if (props.promise === promise) { settle(state, value) }
+        call(del, set, promise)
       }
-      if (props.promise === promise) { settle(state, value) }
-      set.delete(promise)
     }
     watch(() => props.promise, (promise) => {
       if (promise == null) {
@@ -38,7 +42,7 @@ export const Awaiter = defineComponent({
         settle('fulfilled', promise)
         return
       }
-      if (set.has(promise)) { return }
+      if (call(has, set, promise)) { return }
       resolve(promise)
     }, { immediate: true })
     return () => {

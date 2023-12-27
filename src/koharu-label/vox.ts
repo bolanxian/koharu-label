@@ -1,5 +1,5 @@
 
-import { isPlainObject } from "./utils"
+import { isPlainObject } from '../utils'
 const { padStart } = String.prototype, { trunc } = Math
 
 export let baseURL = '', settingURL = ''

@@ -17,8 +17,34 @@ export class WorldWasm {
     return this.#world.wavwrite(data, fs)
   }
   async decodeAudio(blob: Blob) {
-    const { x, fs, nbit } = await this.#world.wavread(await blob.arrayBuffer())
-    return new AudioData<true>({ data: x, fs, info: { format: 'WAV', subtype: `PCM_${nbit}` } })
+    const buffer = await blob.arrayBuffer()
+    try {
+      const { x, fs, nbit } = await this.#world.wavread(buffer)
+      return new AudioData<true>({ data: x, fs, info: { format: 'WAV', subtype: `PCM_${nbit}(World-Wasm)` } })
+    } catch (error) {
+      console.warn('World-Wasm error', error)
+    }
+    const head = String.fromCharCode(...new Uint8Array(buffer, 0, 16))
+    if (/^RIFF.{4}WAVEfmt /s.test(head)) {
+      const view = new DataView(buffer)
+      const isFloat = view.getUint16(20, true) === 3
+      const sampleRate = view.getUint32(24, true)
+      const nbit = view.getUint16(34, true)
+
+      const ctx = new OfflineAudioContext({ length: 1, sampleRate })
+      const abuf = await ctx.decodeAudioData(buffer)
+      const data = abuf.getChannelData(0), fs = abuf.sampleRate
+      if (fs !== sampleRate) {
+        throw new TypeError(`Assertion failed: AudioBuffer.sampleRate == ${sampleRate}`, { cause: abuf })
+      }
+      const info = { format: 'WAV', subtype: `PCM_${nbit}${isFloat ? 'F' : ''}` }
+      return new AudioData<true>({ data, fs, info })
+    } else {
+      const ctx = new AudioContext()
+      const abuf = await ctx.decodeAudioData(buffer)
+      const data = abuf.getChannelData(0), fs = abuf.sampleRate
+      return new AudioData({ data, fs })
+    }
   }
   async dio(data: WORLD.X, fs: number) {
     const { f0, time_axis: t } = await this.#world.dio(data, fs, 5, true)

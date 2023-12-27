@@ -1,8 +1,9 @@
 
 import msgpack from '@ygoe/msgpack'
 import z from 'zod'
+import { isPlainObject } from '../utils'
 import { Ndarray, refine, TypedArray, TypeNdarray } from './ndarray'
-import { isPlainObject, zodAudioInfo, AudioData } from './utils'
+import { zodAudioInfo, AudioData } from './utils'
 
 const zodFloat64Array = refine(1, 'float64')
 const zodFloat64Array2d = refine(2, 'float64')
