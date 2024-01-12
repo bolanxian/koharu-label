@@ -9,8 +9,9 @@ import DropFile from '../components/drop-file.vue'
 import { Awaiter } from '../components/awaiter.vue'
 import hiragana2ChinesePronounce from './hiragana2chinese-pronounce'
 import type * as utils from './utils'
-import { romaji, toHiragana, toKatakana, types, Types } from './utils'
+import { romaji, toHiragana, toKatakana } from './utils'
 import * as pinyin from './pinyin'
+import { Type, getType } from './types'
 
 type ReplaceFuncs = Record<string, (str: string) => string>
 const replaceFuncs: ReplaceFuncs = {
@@ -53,13 +54,14 @@ export default defineComponent({
     pinyinjs ??= loadPinyinjs()
     return {
       pinyinjs,
-      inst: sr<utils.InstTypes | null>(null)
+      inst: sr<Type | null>(null)
     }
   },
   methods: {
-    async loadFile(type: utils.CtorTypes, file: File) {
+    async loadFile(Type: { new(text: string): Type }, file: File) {
       try {
-        const inst = await type.loadAsFile<utils.InstTypes>(this.file = file)
+        this.file = file
+        const inst = new Type(await file.text())
         this.inst = inst
         const lyrics = inst.getLyrics()
         this.length = lyrics.length
@@ -72,10 +74,9 @@ export default defineComponent({
     },
     handleChange(files: File[]) {
       for (const file of files) {
-        const m = file.name.match(/\.([^.]+)$/)
-        const type = m != null ? types[m[1] as keyof Types] : null
-        if (type != null) {
-          return this.loadFile(type, file)
+        const Type = getType(file)
+        if (Type != null) {
+          return this.loadFile(Type, file)
         }
       }
       Message.warning('目前仅支持 musicxml 或 svp 文件')

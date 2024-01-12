@@ -4,7 +4,7 @@
 import { defineComponent, createVNode as h, shallowRef as sr } from 'vue'
 import { Message, Row, Col, Card, Icon, Input, Button, ButtonGroup, Select, Option } from 'view-ui-plus'
 
-import { download } from '../utils'
+import { EXT_REG, getFileExt, download } from '../utils'
 import DropFile from '../components/drop-file.vue'
 import { Awaiter, AwaiterState } from '../components/awaiter.vue'
 import * as utils from './utils'
@@ -183,7 +183,7 @@ const Main = defineComponent({
       worldType: sr(backend !== 'python' ? 'World-Wasm' : 'PyWorld'),
       worldPromise: sr<Promise<World> | null>(null),
       f0File: sr<File | null>(null),
-      audio: sr<File | AudioData<boolean> | null>(null),
+      audio: sr<File | AudioData | null>(null),
       worldResult: sr<PyworldAll | null>(null)
     }
   },
@@ -207,7 +207,7 @@ const Main = defineComponent({
     outputAudioName() {
       const { audio } = this
       if (!(audio instanceof AudioData)) { return null }
-      return audio.name.replace(utils.EXT_REG, '_voxsyn.wav')
+      return audio.name.replace(EXT_REG, '_voxsyn.wav')
     }
   },
   methods: {
@@ -222,7 +222,7 @@ const Main = defineComponent({
       const { audioTypes } = AudioData
       let lab, f0, audio
       for (const file of files) {
-        const type = utils.getFileExt(file)
+        const type = getFileExt(file)
         if (type === 'lab') { lab = file }
         else if (type === 'f0') { f0 = file }
         else if (type === 'vvproj') {
@@ -491,7 +491,7 @@ Object.assign(Main.methods as any, {
     }
     const audioBuffer = await new Response(stream.readable).arrayBuffer()
     vm.log(M('world_analysis'))
-    const audio = new AudioData<boolean>({
+    const audio = new AudioData({
       data: new init!.Ctor(audioBuffer), fs: init!.fs, info: init!.info
     })
     audio.name = f0File.name.replace(/\.f0$/, `(${promptValue}).wav`)

@@ -1,11 +1,13 @@
 
+export { isSupport, ready } from 'world-wasm/src/main'
 import * as WORLD from 'world-wasm/src/main'
 import { AudioData } from './utils'
 
-export const isSupport = typeof WebAssembly !== 'undefined'
 type World = WORLD.World | WORLD.WorldAsync
+const name = 'World-Wasm'
 export class WorldWasm {
   static async create(isAsync: boolean = true) {
+    await WORLD.ready
     const world = await (isAsync ? WORLD.createAsync : WORLD.create)()
     return new this(world)
   }
@@ -20,9 +22,12 @@ export class WorldWasm {
     const buffer = await blob.arrayBuffer()
     try {
       const { x, fs, nbit } = await this.#world.wavread(buffer)
-      return new AudioData<true>({ data: x, fs, info: { format: 'WAV', subtype: `PCM_${nbit}(World-Wasm)` } })
+      const info = { format: 'WAV', subtype: `PCM_${nbit}` }
+      return new AudioData({
+        data: x, fs, info, decoder: name
+      })
     } catch (error) {
-      console.warn('World-Wasm error', error)
+      console.warn(`${name} error`, error)
     }
     const head = String.fromCharCode(...new Uint8Array(buffer, 0, 16))
     if (/^RIFF.{4}WAVEfmt /s.test(head)) {
@@ -38,12 +43,12 @@ export class WorldWasm {
         throw new TypeError(`Assertion failed: AudioBuffer.sampleRate == ${sampleRate}`, { cause: abuf })
       }
       const info = { format: 'WAV', subtype: `PCM_${nbit}${isFloat ? 'F' : ''}` }
-      return new AudioData<true>({ data, fs, info })
+      return new AudioData({ data, fs, info })
     } else {
       const ctx = new AudioContext()
       const abuf = await ctx.decodeAudioData(buffer)
       const data = abuf.getChannelData(0), fs = abuf.sampleRate
-      return new AudioData({ data, fs })
+      return new AudioData({ data, fs, decoder: 'Web Audio API' })
     }
   }
   async dio(data: WORLD.X, fs: number) {
@@ -71,6 +76,5 @@ export interface WorldWasm {
   readonly [Symbol.toStringTag]: string
 }
 Object.assign(WorldWasm.prototype, {
-  name: 'World-Wasm',
-  [Symbol.toStringTag]: 'World-Wasm'
+  name, [Symbol.toStringTag]: name
 })

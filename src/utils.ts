@@ -22,6 +22,10 @@ const EventTargetProto = EventTarget.prototype
 export const on = bindCall(EventTargetProto.addEventListener)
 export const off = bindCall(EventTargetProto.removeEventListener)
 
+export const EXT_REG = /\.([^.]+)$/
+export const getFileExt = (file: File): string | null => {
+  return file.name.match(EXT_REG)?.[1] ?? null
+}
 export const download = (parts: BlobPart[] | Blob, filename = ''): void => {
   const blob = isArray(parts) ? new Blob(parts) : parts
   const src = URL.createObjectURL(blob)

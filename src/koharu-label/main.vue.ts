@@ -4,7 +4,7 @@
 import { defineComponent, createVNode as h, shallowRef as sr } from 'vue'
 import { Message, Row, Col, Card, Icon, Input, Button, ButtonGroup, Radio, RadioGroup, Checkbox, Select, Option } from 'view-ui-plus'
 
-import { download } from '../utils'
+import { EXT_REG, getFileExt, download } from '../utils'
 import readme from '../assets/readme.md?markdown'
 import { romaji } from '../lyric-transfer/utils'
 import DropFile from '../components/drop-file.vue'
@@ -46,7 +46,7 @@ export default defineComponent({
       worldPromise: sr<Promise<World> | null>(null),
       handle: sr<FileSystemDirectoryHandle | null>(null),
       labFile: sr<File | null>(null),
-      audio: sr<File | AudioData<boolean> | null>(null),
+      audio: sr<File | AudioData | null>(null),
       worldResult: sr<PyworldDio | null>(null),
       inst: sr<SvpFile | null>(null)
     }
@@ -61,7 +61,7 @@ export default defineComponent({
         } else if (worldType === 'World-Wasm') {
           promise = WorldWasm.create(!1)
         } else if (worldType === 'PyWorld') {
-          promise = Promise.resolve(new PyWorld(this.$props.baseURL))
+          promise = PyWorld.create(this.$props.baseURL)
         }
         this.worldPromise = promise
       }, immediate: true
@@ -71,7 +71,7 @@ export default defineComponent({
     audioName(): string | undefined {
       const { audio, worldResult } = this
       if (audio != null && worldResult != null) {
-        return audio.name.replace(utils.EXT_REG, '')
+        return audio.name.replace(EXT_REG, '')
       }
     },
     audioMsg(): string {
@@ -108,7 +108,7 @@ export default defineComponent({
     },
     async handleChange(files: File[]) {
       for (const file of files) {
-        const type = utils.getFileExt(file)
+        const type = getFileExt(file)
         if (type === 'lab') {
           this.labFile = file
         } else if (type === 'f0') {
@@ -272,7 +272,7 @@ export default defineComponent({
             onFulfilled(world: World) { vm.world = world }
           }, (state: AwaiterState, world: World) => [
             h(Select, {
-              style: 'width: 200px;display: block;margin-bottom: .8em',
+              style: 'width:200px;display:block;margin-bottom:0.8em',
               transfer: true,
               disabled: vm.audio != null,
               prefix: state !== 'pending' ? state !== 'rejected' ? '' : 'ios-close' : 'ios-loading',
@@ -286,7 +286,9 @@ export default defineComponent({
             state !== 'pending'
               ? state !== 'rejected'
                 ? vm.audioMsg
-                : `加载失败 ${this.worldType}`
+                : isSupportWasm
+                  ? `加载失败 ${this.worldType}`
+                  : h('span', { style: 'color:red' }, ['当前浏览器不支持 WebAssembly'])
               : `正在加载 ${this.worldType}`
           ])
         }),
@@ -311,7 +313,7 @@ export default defineComponent({
               }, () => 'ustx'),
               h(Button, {
                 disabled, onClick: vm.exportNtpj,
-                title: '适用于 NEUTRINOTyouseiSienTool v1.8.0.3'
+                title: '适用于 NEUTRINOTyouseiSienTool v1.8.0.3 或更高版本'
               }, () => 'ntpj')
             ]
           }),

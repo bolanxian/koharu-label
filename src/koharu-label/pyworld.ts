@@ -22,9 +22,12 @@ const zodAudioPacked = z.object({
   fs: z.number(),
   info: zodAudioInfo,
   data: z.union([zodFloat64Array, zodFloat64Array2d.transform(data => data[0])])
-}).transform((init) => new AudioData<true>(init))
+}).transform((init) => new AudioData(init))
 
 export class PyWorld {
+  static async create(baseURL: string) {
+    return new this(baseURL)
+  }
   baseURL: string
   constructor(baseURL: string) {
     this.baseURL = new URL(baseURL, location.href).href

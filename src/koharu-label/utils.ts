@@ -5,7 +5,7 @@ import { TypedArray } from './ndarray'
 
 export const zodAudioInfo = z.object({ format: z.string(), subtype: z.string() })
 export type AudioInfo = z.input<typeof zodAudioInfo>
-export class AudioData<HasInfo extends true | false = false>{
+export class AudioData {
   static audioContext: AudioContext
   static audioTypes = new Set<string>(['wav', 'flac', 'mp3', 'ogg', 'm4a', 'mp4'])
   static play(abuf: AudioBuffer): AudioBufferSourceNode {
@@ -23,7 +23,7 @@ export class AudioData<HasInfo extends true | false = false>{
     const ctx = new OfflineAudioContext({ length: 1, sampleRate })
     const abuf = await ctx.decodeAudioData(await file.arrayBuffer())
     const self = this.fromAudioBuffer(abuf)
-    self.name = file.name
+    self.#name = file.name
     return self
   }
   static fromAudioBuffer(abuf: AudioBuffer): AudioData {
@@ -31,25 +31,37 @@ export class AudioData<HasInfo extends true | false = false>{
     //self.audioBuffer=abuf
     return self
   }
-  name: string
-  info: HasInfo extends true ? AudioInfo : null
-  data: TypedArray<'float32' | 'float64'>
-  fs: number
-  constructor(init: {
-    data: TypedArray<'float32' | 'float64'>, fs: number
-  } & (
-      HasInfo extends true ? { info: AudioInfo } : { info?: null }
-    )) {
-    const { data, fs, info } = init
-    this.name = ''
-    this.data = data
-    this.fs = fs
-    this.info = info ?? null as any
+  #data: TypedArray<'float32' | 'float64'>
+  #fs: number
+  #name: string
+  #info: AudioInfo | null
+  #decoder: string
+  get data() { return this.#data }
+  get fs() { return this.#fs }
+  set name(name) { this.#name = name }
+  get name() { return this.#name }
+  get info() { return this.#info }
+  get decoder() { return this.#decoder }
+  constructor({ data, fs, name, info, decoder }: {
+    data: TypedArray<'float32' | 'float64'>
+    fs: number
+    name?: string | null
+    info?: AudioInfo | null
+    decoder?: string | null
+  }) {
+    this.#data = data
+    this.#fs = fs
+    this.#name = name ?? ''
+    this.#info = info ?? null
+    this.#decoder = decoder ?? ''
   }
   getInfo(): string {
-    let { info } = this, result = `sampleRate:${this.fs}`
+    let info = this.#info, result = `sampleRate: ${this.#fs}`
     if (info != null) {
-      result += `,format:${info.format}[${info.subtype}]`
+      result += `, format: ${info.format}[${info.subtype}]`
+    }
+    if (this.#decoder) {
+      result += `(${this.#decoder})`
     }
     return result
   }
@@ -57,8 +69,8 @@ export class AudioData<HasInfo extends true | false = false>{
     throw new Error("Function not implemented.")
   }
   toAudioBuffer(): AudioBuffer {
-    const { data, fs } = this
-    const abuf = new AudioBuffer({ length: data.length, sampleRate: fs })
+    const data = this.#data
+    const abuf = new AudioBuffer({ length: data.length, sampleRate: this.#fs })
     abuf.getChannelData(0).set(data)
     return abuf
   }
@@ -134,10 +146,6 @@ export const fillF0 = (f0: Float64Array, len: number) => {
   return parts
 }
 
-export const EXT_REG = /\.([^.]+)$/
-export const getFileExt = (file: File): string | null => {
-  return file.name.match(EXT_REG)?.[1] ?? null
-}
 export const fileSystemHandleVerifyPermission = async (handle: any | FileSystemDirectoryHandle, withWrite = false): Promise<boolean> => {
   const opts: any = {}, ok = 'granted'
   if (withWrite) { opts.mode = 'readwrite' }
