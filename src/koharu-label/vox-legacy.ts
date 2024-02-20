@@ -1,14 +1,10 @@
 
-import { isPlainObject } from '../utils'
-const { padStart } = String.prototype, { trunc } = Math
+export { baseURL, setBaseURL, getSettingURL, getInfo } from './vox'
 
-export let baseURL = '', settingURL = ''
-export const setBaseURL = (url: number | string = 50021) => {
-  if (typeof url === 'number') { url = `http://127.0.0.1:${url}/` }
-  settingURL = new URL('/setting', url).href
-  baseURL = url
-}
-setBaseURL()
+import { call } from '../utils'
+import { voxFetch } from './vox'
+const { padStart, toLowerCase } = String.prototype, { trunc } = Math
+
 const vowels = 'pau,sil,cl,a,i,u,e,o,N'.split(',')
 const consonants = 'k,ky,g,gy,s,sh,z,t,ts,ty,ch,d,dy,n,ny,h,hy,b,by,f,p,py,m,my,y,r,ry,v,w,j'.split(',')
 export type LabLine = [number, number, string]
@@ -94,45 +90,14 @@ export const labToQuerys = (_lab: string | Lab, {
   }
   return querys
 }
-const voxFetch = async (url: string, requestData?: any, init: RequestInit = {}) => {
-  url = new URL(url, baseURL).href
-  if (requestData != null) {
-    init.method ??= 'POST'
-    if (isPlainObject(requestData)) {
-      init.headers = new Headers(init.headers)
-      init.headers.set('content-type', "application/json")
-      init.body = JSON.stringify(requestData)
-    } else {
-      init.body = requestData
-    }
-  }
-  init.credentials ??= 'omit'
-  const request = new Request(url, init)
-  const response = await fetch(request)
-  const { status } = response
-  if (!(status >= 200 && status < 300)) {
-    throw new TypeError(`Request failed with status code ${status}`)
-  }
-  return { request, response }
-}
-export const getInfo = async () => {
-  const version: string = await (await voxFetch('/version')).response.json()
-  const data = await (await voxFetch('/engine_manifest')).response.json()
-  return {
-    name: data.name,
-    brand_name: data.brand_name,
-    icon: 'data:image/png;base64,' + data.icon,
-    version
-  }
-}
 export const getSpeakers = async () => {
   const { response } = await voxFetch('/speakers')
   const data = await response.json()
   let str = ''
   for (const speaker of data) {
     for (const style of speaker.styles) {
-      const id = padStart.call(style.id, 3, ' ')
-      const name = padStart.call(speaker.name, 6, '\u3000')
+      const id = call(padStart, style.id, 3, ' ')
+      const name = call(padStart, speaker.name, 6, '\u3000')
       str += `${id}:${name}（${style.name}）\n`
     }
   }
@@ -178,7 +143,7 @@ export const xgenerateLab = function* (query: any, offset = 0): Generator<LabLin
       if (mora.consonantLength != null && mora.consonant != null) {
         yield x(mora.consonantLength, mora.consonant)
       }
-      yield x(mora.vowelLength, mora.vowel !== "N" ? mora.vowel.toLowerCase() : mora.vowel)
+      yield x(mora.vowelLength, mora.vowel !== "N" ? call(toLowerCase, mora.vowel) : mora.vowel)
     }
     const { pauseMora } = accentPhrase
     if (pauseMora != null) {

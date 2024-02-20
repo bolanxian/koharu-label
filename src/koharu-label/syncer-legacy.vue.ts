@@ -13,7 +13,7 @@ import { Ndarray, TypeNdarray, TypedArray, TypedArrayConstructor } from './ndarr
 import { PyworldAll, PyWorld } from './pyworld'
 import { WorldWasm, isSupport as isSupportWasm } from './world-wasm'
 import IterableStream from './iterator-stream'
-import * as vox from './vox'
+import * as vox from './vox-legacy'
 
 type World = PyWorld | WorldWasm | null
 const { apply } = Reflect
@@ -155,7 +155,7 @@ const getVoxInfo = async () => {
   return { ...info, speakers }
 }
 const Main = defineComponent({
-  name: 'Koharu Label Syncer',
+  name: 'Koharu Label Syncer (Legacy)',
   props: {
     backend: { type: String, default: '' },
     baseURL: { type: String, default: '/' }
@@ -382,7 +382,7 @@ const Main = defineComponent({
             default: () => {
               if (fulfilled) { return [h('pre', { innerText: info.speakers })] }
               if (rejected) {
-                const href = vox.settingURL
+                const href = vox.getSettingURL()
                 return [
                   M('conn_vox_fail'), h('br'),
                   M('set_cors0'), h('a', { target: '_blank', href }, [href]), M('set_cors1')
