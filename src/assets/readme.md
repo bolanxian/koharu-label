@@ -12,6 +12,8 @@
 WORLD声码器提供了 `DIO` 和 `Harvest` 两个基频估计方法  
 在本页面控制台执行 `vm.useHarvest=true` 可切换为 `Harvest`  
 
-### [唱歌VOICEVOX](#syncer)
+### [Koharu Label Syncer](#syncer)
+
+### [Koharu Label Syncer (Legacy)](#syncer-legacy)
 
 ### [歌词转换工具](#lyric)

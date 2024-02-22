@@ -17,6 +17,7 @@ import SvpFile from './svp-file'
 import { createNtpjZip } from './ntpj-zip'
 
 type World = PyWorld | WorldWasm | null
+const disabledOpenDir = typeof window.showDirectoryPicker !== 'function'
 export default defineComponent({
   name: 'Koharu Label',
   props: {
@@ -25,6 +26,7 @@ export default defineComponent({
   },
   data() {
     return {
+      type: 'f64',
       bpm: '120',
       basePitch: '60',
       phonemesRadio: 'null',
@@ -142,12 +144,23 @@ export default defineComponent({
       this.audio = this.worldResult = null
     },
     async loadF0File(file: File) {
-      const f0 = new Float64Array(await file.arrayBuffer())
-      const result = {
-        f0, t: Float64Array.from(f0, (_, i) => i / 200)
+      try {
+        const buffer = await file.arrayBuffer()
+        let f0: Float64Array
+        switch (this.type) {
+          case 'f32': f0 = new Float64Array(new Float32Array(buffer)); break
+          case 'f64': f0 = new Float64Array(buffer); break
+        }
+        const result = {
+          f0: f0!, t: Float64Array.from(f0!, (_, i) => i / 200)
+        }
+        this.audio = file
+        this.worldResult = result
+      } catch (e) {
+        this.closeAudioFile()
+        Message.error('导入失败')
+        throw e
       }
-      this.audio = file
-      this.worldResult = result
     },
     exportF0() {
       const { audioName, worldResult } = this
@@ -155,7 +168,7 @@ export default defineComponent({
       let _len = prompt('填充长度（字节）')
       if (typeof _len !== 'string') { return }
       _len = _len.replace(/[\s,]/g, '')
-      let parts: Float64Array[]
+      let parts: (Float64Array | Float32Array)[]
       if (!_len) {
         parts = [worldResult.f0]
       } else {
@@ -164,6 +177,11 @@ export default defineComponent({
         if (len !== len) { return }
         if (len === 0) { len = f0.byteLength }
         parts = utils.fillF0(f0, len)
+      }
+      if (this.type == 'f32') {
+        for (let i = 0; i < parts.length; i++) {
+          parts[i] = new Float32Array(parts[i])
+        }
       }
       this.saveFile(parts, audioName + '.f0')
     },
@@ -271,6 +289,18 @@ export default defineComponent({
             promise: vm.worldPromise,
             onFulfilled(world: World) { vm.world = world }
           }, (state: AwaiterState, world: World) => [
+            h(RadioGroup, {
+              style: 'float:right',
+              type: 'button',
+              modelValue: vm.type,
+              'onUpdate:modelValue'(value: string) { vm.type = value }
+            }, () => {
+              const disabled = vm.audio != null
+              return [
+                h(Radio, { disabled, label: 'f32', title: '适用于 NEUTRINO v2' }, () => '单精度'),
+                h(Radio, { disabled, label: 'f64' }, () => '双精度')
+              ]
+            }),
             h(Select, {
               style: 'width:200px;display:block;margin-bottom:0.8em',
               transfer: true,
@@ -300,7 +330,8 @@ export default defineComponent({
             const disabled = vm.audioName == null && vm.labFile == null
             return [
               h(Button, {
-                disabled: typeof window.showDirectoryPicker !== 'function',
+                disabled: disabledOpenDir,
+                title: disabledOpenDir ? '当前浏览器不支持 FS Access API' : null,
                 onClick: vm.openDir
               }, () => '打开文件夹'),
               h(Button, {
