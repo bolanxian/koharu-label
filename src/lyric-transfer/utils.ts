@@ -1,7 +1,9 @@
 
 import { call } from '../utils'
-import table, { reg as romajiReg } from './table?table-reg'
-import reverseTable, { reg as reverseRomajiReg } from './table?table-reg&reverse'
+import table, { reg as romajiReg } from './romaji-table?table-reg'
+import reverseTable, { reg as reverseRomajiReg } from './romaji-table?table-reg&reverse'
+import halfKanaTable, { reg as halfKanaReg } from './halfkana-table?table-reg'
+import fullKanaTable, { reg as fullKanaReg } from './halfkana-table?table-reg&reverse'
 
 type Replacer = [RegExp, string | ((sub: string, ...args: any[]) => string)]
 
@@ -65,3 +67,6 @@ const createCharCodeOffset = (reg: RegExp, i: number) => {
 
 export const toHiragana = createCharCodeOffset(/[\u30a1-\u30f6]/g, -0x60)//カタカナをひらがなに変換する関数
 export const toKatakana = createCharCodeOffset(/[\u3041-\u3096]/g, 0x60)//ひらがなをカタカナに変換する関数
+
+export const toFullKana = replacer([[halfKanaReg, m => halfKanaTable[m]]])
+export const toHalfKana = replacer([[fullKanaReg, m => fullKanaTable[m]]])

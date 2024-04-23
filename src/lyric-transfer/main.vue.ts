@@ -8,8 +8,7 @@ import { download } from '../utils'
 import DropFile from '../components/drop-file.vue'
 import { Awaiter } from '../components/awaiter.vue'
 import hiragana2ChinesePronounce from './hiragana2chinese-pronounce'
-import type * as utils from './utils'
-import { romaji, toHiragana, toKatakana } from './utils'
+import { romaji, toHiragana, toKatakana, toFullKana, toHalfKana } from './utils'
 import * as pinyin from './pinyin'
 import { Type, getType } from './types'
 
@@ -23,7 +22,7 @@ const replaceFuncs: ReplaceFuncs = {
   romajiToHiragana: romaji.toHiragana,
   romajiToKatakana: romaji.toKatakana,
   toRomaji: romaji.from,
-  toHiragana, toKatakana,
+  toHiragana, toKatakana, toFullKana, toHalfKana,
   hiraganaToChinesePronounce: str => hiragana2ChinesePronounce(toHiragana(str))
 }
 const phonemesModeSet = new Set(['hiraganaToChinesePronounce'])
@@ -159,6 +158,10 @@ export default defineComponent({
             ]), h('br'),
             h(ButtonGroup, { style: { 'margin-top': '10px' } }, () => [
               h(Button, { 'html-type': 'submit', 'data-name': 'toRomaji' }, () => '假名→罗马字')
+            ]), h('br'),
+            h(ButtonGroup, { style: { 'margin-top': '10px' } }, () => [
+              h(Button, { 'html-type': 'submit', 'data-name': 'toFullKana' }, () => '半角片假名→片假名'),
+              h(Button, { 'html-type': 'submit', 'data-name': 'toHalfKana' }, () => '片假名→半角片假名')
             ]), h('br'),
             h(Awaiter, { promise: vm.pinyinjs }, {
               empty: () => null,
