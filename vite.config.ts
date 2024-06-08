@@ -35,7 +35,7 @@ const tableReg = (): Plugin => {
     keys = keys.map(s => s.replace(/\\/g, '\\\\'))
     return `\
 export default ${JSON.stringify(table)}
-export const reg = RegExp(${JSON.stringify(keys.join('|'))}, 'g')
+export const reg = ${JSON.stringify(keys.join('|'))}
 `
   }
   function* xreverse(entries: [string, unknown][]) {

@@ -13,12 +13,12 @@ declare module '*?markdown' {
 declare module '*?table-reg' {
   const table: Record<string, string>
   export default table
-  export const reg: RegExp
+  export const reg: string
 }
 declare module '*?table-reg&reverse' {
   const table: Record<string, string>
   export default table
-  export const reg: RegExp
+  export const reg: string
 }
 declare module 'ipinyinjs/pinyinUtil' {
   export const pinyinUtil: {

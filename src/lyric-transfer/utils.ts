@@ -1,18 +1,22 @@
 
 import { call } from '../utils'
-import table, { reg as romajiReg } from './romaji-table?table-reg'
-import reverseTable, { reg as reverseRomajiReg } from './romaji-table?table-reg&reverse'
-import halfKanaTable, { reg as halfKanaReg } from './halfkana-table?table-reg'
-import fullKanaTable, { reg as fullKanaReg } from './halfkana-table?table-reg&reverse'
+import table, { reg as _0 } from './romaji-table?table-reg'
+const romajiReg = RegExp(_0, 'ig')
+import reverseTable, { reg as _1 } from './romaji-table?table-reg&reverse'
+const reverseRomajiReg = RegExp(_1, 'ig')
+import halfKanaTable, { reg as _2 } from './halfkana-table?table-reg'
+const halfKanaReg = RegExp(_2, 'g')
+import fullKanaTable, { reg as _3 } from './halfkana-table?table-reg&reverse'
+const fullKanaReg = RegExp(_3, 'g')
 
+type Override<T, U> = U & Omit<T, keyof U>
 type Replacer = [RegExp, string | ((sub: string, ...args: any[]) => string)]
 
 const { fromCharCode } = String
-const { charCodeAt, replace, split } = String.prototype as {
-  charCodeAt: String['charCodeAt']
+const { toLowerCase, charCodeAt, replace, split } = String.prototype as Override<String, {
   replace(this: string, ...args: Replacer): string
   split(this: string, ...args: [string, number?]): string[]
-}
+}>
 
 export const replacer = (list: Replacer[]) => {
   const fn = (str: string) => {
@@ -37,8 +41,11 @@ export const replacerShort = (list: Replacer[]) => {
   return fn
 }
 
+const pre: Replacer[] = [
+  [RegExp(`(.)(?=\\1)(?=${call(replace, _0, /\|(?:.|\\\\')(?=\||$)/g, '')})`, 'ig'), 'cl']
+]
 export const romaji = Object.freeze({
-  __proto__: null as never,
+  __proto__: null!,
   table,
   reg: romajiReg,
   fromReg: reverseRomajiReg,
@@ -46,17 +53,17 @@ export const romaji = Object.freeze({
     reverseRomajiReg,
     m => reverseTable[m] ?? m
   ]]),
-  toHiragana: replacer([[
+  toHiragana: replacer([...pre, [
     romajiReg,
     m => {
-      const s = table[m]
+      const s = table[call(toLowerCase, m)]
       return s != null ? call(split, s, ',', 1)[0] : m
     }
   ]]),
-  toKatakana: replacer([[
+  toKatakana: replacer([...pre, [
     romajiReg,
     m => {
-      const s = table[m]
+      const s = table[call(toLowerCase, m)]
       return s != null ? call(split, s, ',', 2)[1] : m
     }
   ]])
