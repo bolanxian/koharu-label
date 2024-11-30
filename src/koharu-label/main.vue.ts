@@ -26,6 +26,7 @@ export default defineComponent({
   },
   data() {
     return {
+      extra: false,
       type: 'f64',
       bpm: '120',
       basePitch: '60',
@@ -342,10 +343,10 @@ export default defineComponent({
                 disabled, onClick: vm.exportUstx,
                 title: '适用于 OpenUtau'
               }, () => 'ustx'),
-              h(Button, {
+              vm.extra ? h(Button, {
                 disabled, onClick: vm.exportNtpj,
-                title: '适用于 NEUTRINOTyouseiSienTool v1.8.0.3 或更高版本'
-              }, () => 'ntpj')
+                title: '适用于 NEUTRINOTyouseiSienTool v1.8.0.3'
+              }, () => 'ntpj') : null
             ]
           }),
           default: () => [

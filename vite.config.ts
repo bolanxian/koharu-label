@@ -61,30 +61,32 @@ export const reg = ${JSON.stringify(keys.join('|'))}
   }
 }
 
-const externalAssets = ((): {
-  renderBuiltUrl: UserConfig['experimental']['renderBuiltUrl']
-  plugin: Plugin
-} => {
-  const reg = /\/(ionicons)-[\da-f]{8}\.((?!woff2)\S+)$/
+const externalAssets = (): Plugin => {
+  const reg = /\/(ionicons)-[-\w]{8}\.((?!woff2)\S+)$/
   return {
-    renderBuiltUrl(fileName, { type, hostId, hostType }) {
-      if (hostType === 'css') {
-        const m = fileName.match(reg)
-        if (m != null) { return `data:text/plain,${m[1]}.${m[2]}` }
-      }
-      return { relative: true }
-    },
-    plugin: {
-      name: 'external-assets',
-      generateBundle(options, bundle) {
-        for (const fileName of Object.keys(bundle)) {
-          const m = fileName.match(reg)
-          if (m != null) { delete bundle[fileName] }
+    name: 'external-assets',
+    apply: 'build',
+    config(config, env) {
+      return {
+        experimental: {
+          renderBuiltUrl(fileName, { type, hostId, hostType }) {
+            if (type === 'asset' && hostType === 'css') {
+              const m = fileName.match(reg)
+              if (m != null) { return 'about:invalid' }
+            }
+            return { relative: true }
+          }
         }
+      }
+    },
+    generateBundle(options, bundle) {
+      for (const fileName of Object.keys(bundle)) {
+        const m = fileName.match(reg)
+        if (m != null) { delete bundle[fileName] }
       }
     }
   }
-})()
+}
 
 export default defineConfig({
   appType: 'mpa',
@@ -95,7 +97,6 @@ export default defineConfig({
   resolve: {
     extensions: ['.js', '.ts', '.json', '.vue']
   },
-  experimental: { renderBuiltUrl: externalAssets.renderBuiltUrl },
   optimizeDeps: { exclude: ['world-wasm', 'ipinyinjs'] },
   build: {
     outDir: '../dist',
@@ -129,7 +130,7 @@ export default defineConfig({
     vue(),
     ipinyinjs(),
     tableReg(),
-    externalAssets.plugin,
+    externalAssets(),
     {
       name: 'view-ui-plus',
       enforce: 'pre',

@@ -12,31 +12,17 @@ const map0 = new Map(Object.entries({
   'lve': 'rue'
 }))
 export const list = replacerShort([
-  [/^(zh|ch|sh|[zcs])i$/, (m, $1) => `${mapc.get($1) ?? $1}u`],
-  [/^(zh|ch|sh|[dtnlzcsgkhry])ou$/, (m, $1) => `${mapc.get($1) ?? $1}o`],
-  [/^(zh|ch|sh|[dtnlzcsgkhr])e$/, (m, $1) => `${mapc.get($1) ?? $1}oa`],
-  [/^(zh|ch|sh|[bpmfdtnlzcsgkhryw])eng?$/, (m, $1) => `${mapc.get($1) ?? $1}on`],
-  [/^y[uv](e|n|an)?$/, (m, $1) => `yu${$1 || 'i'}`],
-  [/^j[uv](e|n|an)?$/, (m, $1) => `ju${$1 || 'i'}`],
-  [/^q[uv](e|n|an)?$/, (m, $1) => `chu${$1 || 'i'}`],
-  [/^x[uv](e|n|an)?$/, (m, $1) => `shu${$1 || 'i'}`],
+  [/^([zcs]h?)i$/, (m, $1) => `${mapc.get($1) ?? $1}u`],
+  [/^([zcs]h?|[dtnlgkhry])ou$/, (m, $1) => `${mapc.get($1) ?? $1}o`],
+  [/^([zcs]h?|[dtnlgkhr])e$/, (m, $1) => `${mapc.get($1) ?? $1}oa`],
+  [/^([zcs]h?|[bpmfdtnlgkhryw])eng?$/, (m, $1) => `${mapc.get($1) ?? $1}on`],
+  [/^([bpmfdtnljqx])ian$/, (m, $1) => `${mapc.get($1) ?? $1}ien`],
+  [/^([yjqx])[uv](e|n|an)?$/, (m, $1, $2) => `${mapc.get($1) ?? $1}u${$2 || 'i'}`],
   [/^yi/, 'i'],
-  [/^wu/, 'u']
-  /*[/^ku(.+)/,'kw$1'],
-  [/^gu(.+)/,'gw$1'],
-  [/^li(.+)/,'ry$1'],
-  [/^mi(.+)/,'my$1'],
-  [/^pi(.+)/,'py$1'],
-  [/^hi(.+)/,'hy$1'],
-  [/^ni(.+)/,'ny$1'],
-  [/^di(.+)/,'dy$1'],
-  [/^ti(.+)/,'ty$1'],
-  [/^gi(.+)/,'gy$1'],
-  [/^ki(.+)/,'ky$1'],*/
-  //[/^hu/,'fu'],
-  /* [/^ji([aeou]+)/,'j$1'],
-  [/^qi([aeou]+)/,'ch$1'],
-  [/^xi([aeou]+)/,'sh$1'] */
+  [/^wu/, 'u'],
+  // [/^([kg])u(.+)/, '$1w$2'],
+  // [/^([lmphndtgk])i(.+)/, (m, $1, $2) => `${mapc.get($1) ?? $1}y${$2}`],
+  // [/^([jqx])i([aeou]+)/, (m, $1, $2) => `${mapc.get($1) ?? $1}${$2}`],
 ])
 const mapc = new Map(Object.entries({
   'zh': 'j',
@@ -60,7 +46,6 @@ const toneMap = {
 export const toRomaji = replacer([[
   reg,
   (m, a = '', b: string, off: number, str: string) => {
-    if (b.slice(-1) === 'g') { b = b.slice(0, -1) }
     m = a + b
     let temp = map0.get(m)
     if (temp != null) { return temp }
@@ -68,6 +53,7 @@ export const toRomaji = replacer([[
     if (temp !== m) { return temp }
     temp = mapc.get(a)
     if (temp != null) { a = temp }
+    if (b.slice(-1) === 'g') { b = b.slice(0, -1) }
     return a + b
   }
 ]])
