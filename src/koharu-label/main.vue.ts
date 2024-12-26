@@ -1,6 +1,7 @@
 /**
  * @createDate 2021-12-9 14:59:59
 */
+import YAML from 'yaml'
 import { defineComponent, createVNode as h, shallowRef as sr } from 'vue'
 import { Message, Row, Col, Card, Icon, Input, Button, ButtonGroup, Radio, RadioGroup, Checkbox, Select, Option } from 'view-ui-plus'
 
@@ -15,6 +16,7 @@ import { PyworldDio, PyWorld } from './pyworld'
 import { WorldWasm, isSupport as isSupportWasm } from './world-wasm'
 import SvpFile from './svp-file'
 import { createNtpjZip } from './ntpj-zip'
+const { trunc } = Math
 
 type World = PyWorld | WorldWasm | null
 const disabledOpenDir = typeof window.showDirectoryPicker !== 'function'
@@ -76,6 +78,10 @@ export default defineComponent({
       if (audio != null && worldResult != null) {
         return audio.name.replace(EXT_REG, '')
       }
+      const { labFile } = this
+      if (labFile != null) {
+        return labFile.name.replace(EXT_REG, '')
+      }
     },
     audioMsg(): string {
       const { world, audio, worldResult } = this
@@ -112,16 +118,73 @@ export default defineComponent({
     async handleChange(files: File[]) {
       for (const file of files) {
         const type = getFileExt(file)
-        if (type === 'lab') {
-          this.labFile = file
-        } else if (type === 'f0') {
-          this.closeAudioFile()
-          await this.loadF0File(file)
-        } else if (AudioData.audioTypes.has(type!)) {
-          this.closeAudioFile()
-          await this.loadAudioFile(file)
+        switch (type) {
+          case 'lab': this.labFile = file; break
+          case 'svp': this.loadSvpFile(file); break
+          case 'ustx': this.loadUstxFile(file); break
+          case 'f0': {
+            this.closeAudioFile()
+            await this.loadF0File(file)
+          } break
+          default: if (AudioData.audioTypes.has(type!)) {
+            this.closeAudioFile()
+            await this.loadAudioFile(file)
+          }
         }
       }
+    },
+    async loadSvpFile(file: File) {
+      const svp = JSON.parse((await file.text()).replace(/\0+$/, ''))
+      const { bpm } = svp.time.tempo[0]
+      const ratio = 10_000_000 / (bpm * 705600000 / 60)
+      const list: { type: string, name: string, notes: any[] }[] = [...function* () {
+        for (const { name, mainGroup: { notes } } of svp.tracks) {
+          yield { type: '轨道', name, notes }
+        }
+        for (const { name, notes } of svp.library) {
+          yield { type: '音符组', name, notes }
+        }
+      }()]
+      const index = prompt(
+        list.map(($,i) => `${i}:(${$.notes.length})[${$.type}]${$.name}`).join('\n'),
+        `${list.findIndex($ => $.notes.length > 0) ?? 0}`
+      )
+      if (index == null) { return }
+      const { name, notes } = list[+index]
+      let ret: string[] = []
+      for (const note of notes) {
+        const noteEnd = note.onset + note.duration
+        const start = trunc(note.onset * ratio)
+        const end = trunc(noteEnd * ratio)
+        ret[ret.length] = `${start} ${end} ${note.lyrics}\n`
+      }
+      const fileName = `${file.name.replace(EXT_REG, '')}[${name}].lab`
+      this.labFile = new File(ret, fileName, { type: 'text/plain' })
+    },
+    async loadUstxFile(file: File) {
+      const ustx = YAML.parse(await file.text())
+      const { bpm } = ustx.tempos[0]
+      const ratio = 10_000_000 / (bpm * 480 / 60)
+      const list: { name: string, notes: any[] }[] = [...ustx.voice_parts]
+      const index = prompt(
+        list.map(($,i)  => `${i}:(${$.notes.length})${$.name}`).join('\n'),
+        `${list.findIndex($ => $.notes.length > 0) ?? 0}`
+      )
+      if (index == null) { return }
+      const { name, notes } = list[+index]
+      let ret: string[] = []
+      for (const note of notes) {
+        const noteEnd = note.position + note.duration
+        const start = trunc(note.position * ratio)
+        const end = trunc(noteEnd * ratio)
+        ret[ret.length] = `${start} ${end} ${note.lyric}\n`
+      }
+      const fileName = `${file.name.replace(EXT_REG, '')}[${name}].lab`
+      this.labFile = new File(ret, fileName, { type: 'text/plain' })
+    },
+    exportLabFile() {
+      const { labFile } = this
+      this.saveFile([labFile!], labFile!.name)
     },
     closeLabFile() {
       this.labFile = null
@@ -152,7 +215,7 @@ export default defineComponent({
           case 'f32': f0 = new Float64Array(new Float32Array(buffer)); break
           case 'f64': f0 = new Float64Array(buffer); break
         }
-        const result = {
+        const result: PyworldDio = {
           f0: f0!, t: Float64Array.from(f0!, (_, i) => i / 200)
         }
         this.audio = file
@@ -260,20 +323,26 @@ export default defineComponent({
             const name = vm.labFile?.name
             return h('p', {}, [
               name != null ? h('i', { class: 'ivu-icon ivu-icon-md-document' }) : null,
-              h('span', { title: name ?? '' }, [name ?? '需要 lab 文件'])
+              h('span', { title: name ?? '或 svp, ustx 文件' }, [name ?? '需要 lab 文件'])
             ])
           },
-          extra: () => h(Button, {
-            disabled: vm.labFile == null,
-            onClick: vm.closeLabFile,
-          }, () => h(Icon, { type: 'md-close' }))
+          extra: () => h(ButtonGroup, {}, () => [
+            h(Button, {
+              disabled: vm.labFile == null,
+              onClick: vm.exportLabFile
+            }, () => '导出 lab'),
+            h(Button, {
+              disabled: vm.labFile == null,
+              onClick: vm.closeLabFile,
+            }, () => h(Icon, { type: 'md-close' }))
+          ])
         }),
         h(Card, {}, {
           title: () => {
             const name = vm.audio?.name
             return h('p', {}, [
               vm.audioName != null ? h('i', { class: 'ivu-icon ivu-icon-md-document' }) : null,
-              h('span', { title: name ?? '' }, [name ?? '需要 f0 文件'])
+              h('span', { title: name ?? `或 ${[...AudioData.audioTypes].join(', ')} 文件` }, [name ?? '需要 f0 文件'])
             ])
           },
           extra: () => h(ButtonGroup, {}, () => [
