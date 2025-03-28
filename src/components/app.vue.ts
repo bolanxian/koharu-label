@@ -7,7 +7,7 @@ import type { Module } from './apps'
 let APPS: Promise<typeof import('./apps')>
 
 const handleFulfilled = (module: Module) => {
-  if (module != null) { document.title = module.name }
+  if (module != null) { document.title = module.name! }
 }
 const getModuleAsync = async (hash = location.hash) => {
   if (import.meta.env.DEV) switch (hash) {

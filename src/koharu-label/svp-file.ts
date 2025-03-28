@@ -268,5 +268,31 @@ export default class SvpFile {
     }
     return YAML.stringify(ustx)
   }
+  toShidunzi(name = 'unknown', author = '', mapper = '', level = '1') {
+    const ratio = 705600000 / 480
+    let prev = this.notes[0]
+    const notes = this.notes.flatMap(_note => {
+      return _note.lyrics.split(';').map(lyric => {
+        const m = lyric.match(/^([A-Z])([.\d]+)(,.+)?$/s)
+        const [, type, col, others] = m ?? [, prev.onset + prev.duration === _note.onset ? 'D' : 'X', '2']
+        const pos = floor(_note.onset / ratio)
+        prev = _note
+        return `${type},0,${pos},480,${col}${others || ',1'}`
+      })
+    })
+    return `\
+[Meta]
+title = ${name}
+author = ${author}
+mapper = ${mapper}
+
+level = ${level}
+bpm = ${this.bpm}
+offset = 0
+bg_offset = 0
+
+[Data]
+${notes.join('\n')}`
+  }
 }
 

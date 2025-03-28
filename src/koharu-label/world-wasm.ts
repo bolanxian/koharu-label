@@ -1,6 +1,7 @@
 
 export { isSupport, ready } from 'world-wasm/src/main'
 import * as WORLD from 'world-wasm/src/main'
+import type { TypedArray } from './ndarray'
 import { AudioData } from './utils'
 
 type World = WORLD.World | WORLD.WorldAsync
@@ -38,7 +39,7 @@ export class WorldWasm {
 
       const ctx = new OfflineAudioContext({ length: 1, sampleRate })
       const abuf = await ctx.decodeAudioData(buffer)
-      const data = abuf.getChannelData(0), fs = abuf.sampleRate
+      const data = abuf.getChannelData(0) as TypedArray<'float32'>, fs = abuf.sampleRate
       if (fs !== sampleRate) {
         throw new TypeError(`Assertion failed: AudioBuffer.sampleRate == ${sampleRate}`, { cause: abuf })
       }
@@ -47,7 +48,7 @@ export class WorldWasm {
     } else {
       const ctx = new AudioContext()
       const abuf = await ctx.decodeAudioData(buffer)
-      const data = abuf.getChannelData(0), fs = abuf.sampleRate
+      const data = abuf.getChannelData(0) as TypedArray<'float32'>, fs = abuf.sampleRate
       return new AudioData({ data, fs, decoder: 'Web Audio API' })
     }
   }

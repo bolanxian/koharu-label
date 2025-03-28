@@ -9,10 +9,11 @@ import { EXT_REG, getFileExt, download } from '../utils'
 import readme from '../assets/readme.md?markdown'
 import { romaji } from '../lyric-transfer/utils'
 import DropFile from '../components/drop-file.vue'
-import { Awaiter, AwaiterState } from '../components/awaiter.vue'
+import { Awaiter, type AwaiterState } from '../components/awaiter.vue'
+import type { TypedArray } from './ndarray'
 import * as utils from './utils'
 import { AudioData } from './utils'
-import { PyworldDio, PyWorld } from './pyworld'
+import { type PyworldDio, PyWorld } from './pyworld'
 import { WorldWasm, isSupport as isSupportWasm } from './world-wasm'
 import SvpFile from './svp-file'
 import { createNtpjZip } from './ntpj-zip'
@@ -146,7 +147,7 @@ export default defineComponent({
         }
       }()]
       const index = prompt(
-        list.map(($,i) => `${i}:(${$.notes.length})[${$.type}]${$.name}`).join('\n'),
+        list.map(($, i) => `${i}:(${$.notes.length})[${$.type}]${$.name}`).join('\n'),
         `${list.findIndex($ => $.notes.length > 0) ?? 0}`
       )
       if (index == null) { return }
@@ -167,7 +168,7 @@ export default defineComponent({
       const ratio = 10_000_000 / (bpm * 480 / 60)
       const list: { name: string, notes: any[] }[] = [...ustx.voice_parts]
       const index = prompt(
-        list.map(($,i)  => `${i}:(${$.notes.length})${$.name}`).join('\n'),
+        list.map(($, i) => `${i}:(${$.notes.length})${$.name}`).join('\n'),
         `${list.findIndex($ => $.notes.length > 0) ?? 0}`
       )
       if (index == null) { return }
@@ -210,7 +211,7 @@ export default defineComponent({
     async loadF0File(file: File) {
       try {
         const buffer = await file.arrayBuffer()
-        let f0: Float64Array
+        let f0: TypedArray<'float64'>
         switch (this.type) {
           case 'f32': f0 = new Float64Array(new Float32Array(buffer)); break
           case 'f64': f0 = new Float64Array(buffer); break
@@ -291,12 +292,17 @@ export default defineComponent({
       const { audioName } = this
       const inst = await this.createSvpFile()
       const svp = inst.toJSON(audioName)
-      this.saveFile([JSON.stringify(svp), '\0'], audioName + '.svp')
+      this.saveFile([JSON.stringify(svp), '\0'], `${audioName}.svp`)
     },
     async exportUstx() {
       const { audioName } = this
       const inst = await this.createSvpFile()
-      this.saveFile([inst.toUstx(audioName)], audioName + '.ustx')
+      this.saveFile([inst.toUstx(audioName)], `${audioName}.ustx`)
+    },
+    async exportShidunzi() {
+      const { audioName } = this
+      const inst = await this.createSvpFile()
+      this.saveFile([inst.toShidunzi(audioName)], 'data.sdz')
     },
     async exportNtpj() {
       const { audioName, worldResult } = this
@@ -412,6 +418,10 @@ export default defineComponent({
                 disabled, onClick: vm.exportUstx,
                 title: '适用于 OpenUtau'
               }, () => 'ustx'),
+              vm.extra ? h(Button, {
+                disabled, onClick: vm.exportShidunzi,
+                title: '适用于 石墩子快跑'
+              }, () => 'sdz') : null,
               vm.extra ? h(Button, {
                 disabled, onClick: vm.exportNtpj,
                 title: '适用于 NEUTRINOTyouseiSienTool v1.8.0.3'

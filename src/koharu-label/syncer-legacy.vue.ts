@@ -9,7 +9,8 @@ import DropFile from '../components/drop-file.vue'
 import { Awaiter, AwaiterState } from '../components/awaiter.vue'
 import * as utils from './utils'
 import { AudioData } from './utils'
-import { Ndarray, TypeNdarray, TypedArray, TypedArrayConstructor } from './ndarray'
+import type { TypeNdarray, TypedArray, TypedArrayConstructor } from './ndarray'
+import { Ndarray } from './ndarray'
 import { PyworldAll, PyWorld } from './pyworld'
 import { WorldWasm, isSupport as isSupportWasm } from './world-wasm'
 import IterableStream from './iterator-stream'
@@ -87,7 +88,7 @@ const utils2 = {
     }
   },
   labelSync(
-    lab0: string, lab1: string, f0: Float64Array, sp: Float64Array[], ap: Float64Array[], fs: number
+    lab0: string, lab1: string, f0: TypedArray<'float64'>, sp: Float64Array[], ap: Float64Array[], fs: number
   ): [TypedArray<'float64'>, TypeNdarray<2, 'float64'>, TypeNdarray<2, 'float64'>, number] {
     const shape: [number, number] = [f0.length, sp[0].length]
     const _sp = Ndarray.create('float64', shape)

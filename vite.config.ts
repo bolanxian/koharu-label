@@ -1,5 +1,5 @@
 
-import type { UserConfig, Plugin } from 'vite'
+import type { Plugin } from 'vite'
 import { defineConfig, createFilter } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { marked } from 'marked'
@@ -102,7 +102,7 @@ export default defineConfig({
     outDir: '../dist',
     emptyOutDir: false,
     target: 'esnext',
-    modulePreload: { polyfill: true },
+    modulePreload: false,
     cssCodeSplit: false,
     minify: false,
     rollupOptions: {
@@ -114,12 +114,12 @@ export default defineConfig({
         transform: {
           order: 'post',
           handler(code, id) {
-            if (id === '\0vite/preload-helper') {
-              return `export const __vitePreload = ''`
+            if (id.startsWith('\0vite/preload-helper')) {
+              return `export let __vitePreload`
             }
-            if (id === '\0vite/modulepreload-polyfill') { return '' }
+            if (id.startsWith('\0vite/modulepreload-polyfill')) { return '' }
             if (code.includes('__vitePreload(')) {
-              return code.replace(/__vitePreload\(\(\) => ([^,]+),__VITE_IS_MODERN__\?"__VITE_PRELOAD__"\:void 0,import\.meta\.url\)/, '$1')
+              return code.replace(/__vitePreload\(\(\) => ([^,]+?),__VITE_IS_MODERN__\?"?__VITE_PRELOAD__"?\:void 0,import\.meta\.url\)/, '$1')
             }
           }
         }

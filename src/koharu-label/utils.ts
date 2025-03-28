@@ -1,7 +1,7 @@
 
 import z from 'zod'
 import { hasOwn, isArray } from '../utils'
-import { TypedArray } from './ndarray'
+import type { TypedArray } from './ndarray'
 
 export const zodAudioInfo = z.object({ format: z.string(), subtype: z.string() })
 export type AudioInfo = z.input<typeof zodAudioInfo>
@@ -27,7 +27,7 @@ export class AudioData {
     return self
   }
   static fromAudioBuffer(abuf: AudioBuffer): AudioData {
-    const self = new this({ data: abuf.getChannelData(0), fs: abuf.sampleRate })
+    const self = new this({ data: abuf.getChannelData(0) as TypedArray<'float32'>, fs: abuf.sampleRate })
     //self.audioBuffer=abuf
     return self
   }
@@ -108,7 +108,7 @@ export function* xgetZeroRanges(buf: TypedArray): Generator<[number, number]> {
 export const getZeroRanges = (buf: TypedArray): [number, number][] => {
   return Array.from(xgetZeroRanges(buf))
 }
-export const fillF0 = (f0: Float64Array, len: number) => {
+export const fillF0 = (f0: TypedArray<'float64'>, len: number) => {
   f0 = Float64Array.from(f0)
   const zeroRanges = getZeroRanges(f0)
   {

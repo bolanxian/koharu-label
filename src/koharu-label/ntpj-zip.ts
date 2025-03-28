@@ -4,6 +4,7 @@
  */
 import { Zip, ZipPassThrough, strToU8 } from 'fflate'
 import type SvpFile from './svp-file'
+import type { TypedArray } from './ndarray'
 import { fillF0 } from './utils'
 const { floor } = Math
 
@@ -61,7 +62,7 @@ export const createNtpj = () => {
 </Project>`
 }
 
-export const createNtpjZip = (name: string, svp: SvpFile, f0: Float64Array) => new Promise<Uint8Array[]>((ok, reject) => {
+export const createNtpjZip = (name: string, svp: SvpFile, f0: TypedArray<'float64'>) => new Promise<Uint8Array[]>((ok, reject) => {
   const parts: Uint8Array[] = []
   const zip = new Zip((error, data, final) => {
     if (error != null) { reject(error); return }
