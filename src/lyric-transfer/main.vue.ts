@@ -4,7 +4,7 @@
 import { defineComponent, createVNode as h, shallowRef as sr } from 'vue'
 import { Message, Row, Col, Affix, Card, Icon, Input, Button, ButtonGroup, Checkbox } from 'view-ui-plus'
 
-import { download } from '../utils'
+import { download, getFileExt } from '../utils'
 import DropFile from '../components/drop-file.vue'
 import { Awaiter } from '../components/awaiter.vue'
 import hiragana2ChinesePronounce from './hiragana2chinese-pronounce'
@@ -71,11 +71,40 @@ export default defineComponent({
         throw e
       }
     },
+    async loadVvproj(file: File) {
+      try {
+        const data = await new Response(file).json()
+        let lyrics = '', output = ''
+        const { audioKeys, audioItems } = data.talk
+        for (const key of audioKeys) {
+          const item = audioItems[key]
+          lyrics += `${item.text}`
+          for (const { moras, pauseMora } of item.query.accentPhrases) {
+            for (const mora of moras) {
+              output += `${mora.text}`
+            }
+            output += `${pauseMora?.text ?? ' '}`
+          }
+          lyrics += '\n'
+          output += '\n'
+        }
+        this.length = audioKeys.length
+        this.lyrics = lyrics
+        this.output = output
+      } catch (e) {
+        Message.error('打开文件失败')
+        this.close()
+        throw e
+      }
+    },
     handleChange(files: File[]) {
       for (const file of files) {
         const Type = getType(file)
         if (Type != null) {
           return this.loadFile(Type, file)
+        }
+        switch (getFileExt(file)) {
+          case 'vvproj': return this.loadVvproj(file)
         }
       }
       Message.warning('目前仅支持 musicxml 或 svp 文件')
